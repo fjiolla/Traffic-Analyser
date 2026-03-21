@@ -1,0 +1,39 @@
+CASCADE RISK MANAGEMENT PROTOCOL
+
+Priority Level: HIGH
+Applicable: When diversion routes approach capacity limits
+
+DEFINITION:
+Cascade risk occurs when a diversion route itself becomes congested, potentially
+creating secondary incidents or gridlock. This is the most dangerous failure mode
+of traffic management systems.
+
+DETECTION CRITERIA:
+- Diversion route speed drops below 50% of its free-flow baseline
+- Diversion route risk score exceeds 0.65
+- Vehicle density on diversion route exceeds 70 veh/km
+- Multiple 911 calls from diversion route area
+
+IMMEDIATE ACTIONS:
+1. Reduce diversion percentage by 50% (e.g., from 30% to 15%)
+2. Activate secondary diversion route
+3. Extend signal green on diversion route approaches
+4. Issue updated public alerts with new routing guidance
+
+PREVENTION:
+- Supervisor node must check diversion route conditions every 30 seconds
+- Volume redistribution should NEVER exceed 35% on a single route
+- Pre-compute 2 backup diversion routes at initial incident detection
+- Monitor aggregate risk across all affected segments, not just incident zone
+
+SECONDARY INCIDENT PROTOCOL:
+If a secondary incident occurs on a diversion route:
+1. Immediately close the diversion route
+2. Activate backup route
+3. Escalate severity tier by +1 (e.g., HIGH → CRITICAL)
+4. Deploy additional NYPD traffic units to manual control
+
+METRICS:
+- Cascade risk threshold: 0.6 (warning), 0.8 (critical)
+- Maximum acceptable secondary incident rate: <5% of diversions
+- Track cascade risk trend (increasing/stable/decreasing) for predictive alerting

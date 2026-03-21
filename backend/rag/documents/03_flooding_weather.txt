@@ -1,0 +1,37 @@
+FLOODING AND WEATHER INCIDENT PROTOCOL
+
+Priority Level: MEDIUM to CRITICAL (depending on water depth)
+Applicable: All low-lying Brooklyn areas, especially near Gowanus Canal, Shore Parkway
+
+DETECTION CRITERIA:
+- Speed drops across multiple adjacent segments simultaneously
+- Risk scores elevating uniformly across a geographic cluster (not point-source)
+- Time-of-day does not explain the speed reduction (weather override)
+
+IMMEDIATE ACTIONS:
+1. Identify affected road segments and confirm flooding reports
+2. Close affected segments completely (speed factor = 0)
+3. Widen diversion radius to 1km (vs standard 600m for collision)
+4. Alert emergency services for potential water rescue
+
+SIGNAL MANAGEMENT FOR FLOODING:
+- Switch affected intersections to flash mode (red flash = treat as stop sign)
+- Extend green on elevated routes to absorb diverted traffic
+- Disable pedestrian signals at flooded crosswalks
+
+DIVERSION CONSIDERATIONS:
+- Avoid ALL routes through flood-prone areas (use elevation data)
+- Prefer routes on elevated ground (e.g., Prospect Park perimeter vs Gowanus)
+- Consider complete corridor closure with bypass routing
+- Coordinate with NYPD for road closure enforcement
+
+PUBLIC ALERTS:
+- VMS: Direct "ROAD CLOSED" messaging (not "delays expected")
+- Radio: Include safety warnings about driving through standing water
+- Social media: Include NYC 311 contact for road condition reports
+- Duration: Update every 15 minutes until water recedes
+
+RECOVERY:
+- Roads must be inspected before reopening after flooding
+- Speed limits reduced to 15 mph for first hour after reopening
+- Monitor for sinkholes or pavement damage reports

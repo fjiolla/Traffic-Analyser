@@ -1,0 +1,36 @@
+PEAK HOUR TRAFFIC DIVERSION PROTOCOL
+
+Priority Level: MEDIUM to HIGH
+Peak Hours: 08:00-10:30 (AM), 17:30-20:30 (PM)
+
+OVERVIEW:
+Incidents during peak hours require accelerated response due to exponential queue growth.
+A 5-minute delay in response during peak hours equals approximately 15 minutes of additional clearance time.
+
+PRE-EMPTIVE MEASURES:
+- Monitor all arterial speed feeds for drops exceeding 30% below baseline
+- Activate signal coordination plans for affected corridors
+- Pre-position diversion messaging on VMS signs at major decision points
+
+SIGNAL ADJUSTMENTS DURING PEAK:
+- Maximum green extension: 15 seconds beyond normal cycle
+- Minimum pedestrian crossing time must be maintained (federal MUTCD requirement)
+- Coordinate adjacent intersections in platoons — do not break green wave
+- Consider turning movement restrictions to simplify signal phasing
+
+CAPACITY MANAGEMENT:
+- Vehicle density threshold for diversion activation: 80 veh/km
+- Monitor diversion routes for secondary congestion — cascade risk assessment
+- Volume redistribution should not exceed 35% on any single alternate route
+- Reassess every 5 minutes and adjust diversion percentage
+
+COMMUNICATION PRIORITY (PEAK HOURS):
+1. VMS signs at highway on-ramps (capture pre-trip decisions)
+2. Social media / app notifications (15-minute travel time impact)
+3. Radio broadcast (commuter stations, every 10 minutes during incident)
+4. Coordination with MTA for transit alternatives messaging
+
+METRICS:
+- Target response time from detection: <90 seconds
+- Target clearance time improvement: 20-30% vs manual coordination
+- Track queue length propagation speed for post-incident analysis

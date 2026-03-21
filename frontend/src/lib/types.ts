@@ -1,0 +1,139 @@
+/* ── TrafficMind TypeScript Types ── */
+
+export interface SegmentSpeed {
+  segment_id: string;
+  street_name: string;
+  speed: number;
+  free_flow_speed: number;
+  lat: number;
+  lon: number;
+  bearing: number;
+  density: number;
+}
+
+export interface RiskEntry {
+  segment_id: string;
+  street_name: string;
+  score: number;
+  speed_deviation: number;
+  historical_rate: number;
+  tod_weight: number;
+  lat: number;
+  lon: number;
+}
+
+export type Severity = "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
+
+export interface IncidentDetection {
+  detected: boolean;
+  incident_id: string;
+  street_name: string;
+  segment_id: string;
+  severity: Severity;
+  severity_tier: number;
+  duration_estimate_min: number;
+  lat: number;
+  lon: number;
+  timestamp: string;
+  description: string;
+}
+
+export interface SignalRecommendation {
+  intersection_name: string;
+  current_phase: string;
+  recommended_phase: string;
+  phase_duration_s: number;
+  reason: string;
+  confidence: number;
+  sensor_citation: string;
+  upstream_distance_m: number;
+}
+
+export interface DiversionRoute {
+  route_street_names: string[];
+  route_coords: number[][];
+  diversion_text: string;
+  risk_delta_pct: number;
+  diversion_volume_pct: number;
+  time_delta_min: number;
+  confidence: number;
+  why_safer: string;
+}
+
+export interface AlertDrafts {
+  vms: string[];
+  radio_script: string;
+  tweet: string;
+}
+
+export interface DensityData {
+  segment_densities: Record<string, number>;
+  congestion_level: string;
+  estimated_vehicles: number;
+  vision_analysis: string;
+}
+
+export interface TimelineEntry {
+  timestamp: string;
+  event: string;
+  category: string;
+}
+
+export interface AgentOutput {
+  signal_recommendations: SignalRecommendation[];
+  diversion: DiversionRoute | null;
+  alerts: AlertDrafts | null;
+  density: DensityData | null;
+  final_summary: string;
+  confidence_scores: Record<string, number>;
+  cascade_risk: number;
+  rag_context: string[];
+  timeline: TimelineEntry[];
+  evaluation_metrics: Record<string, number>;
+}
+
+export interface ChatMessage {
+  role: "user" | "assistant";
+  content: string;
+  timestamp: string;
+  tool_calls: Array<{ tool: string; args: string; result: string }>;
+  thinking: string;
+}
+
+export interface ChatResponse {
+  response: string;
+  thinking: string;
+  tool_calls: Array<{ tool: string; args: string; result: string }>;
+  confidence: number;
+}
+
+export interface TwinData {
+  no_action: Array<SegmentSpeed & { speed: number }>;
+  with_action: Array<SegmentSpeed & { speed: number }>;
+  time_saved_min: number;
+  incident: IncidentDetection | null;
+}
+
+export interface Metrics {
+  active_segments: number;
+  risk_map_size: number;
+  incident_active: boolean;
+  simulated_hour: number;
+  response_latency_s?: number;
+  agents_invoked?: number;
+  signals_generated?: number;
+  alert_compliance?: number;
+  cascade_risk?: number;
+  confidence_scores?: Record<string, number>;
+  incident_severity?: string;
+  duration_estimate_min?: number;
+  manual_avg_min?: number;
+  time_saved_min?: number;
+}
+
+export interface Hotspot {
+  name: string;
+  lat: number;
+  lon: number;
+  rate: number;
+}

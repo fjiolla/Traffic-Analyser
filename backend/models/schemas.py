@@ -1,0 +1,136 @@
+"""Pydantic models for TrafficMind backend."""
+from __future__ import annotations
+from pydantic import BaseModel, Field
+from typing import Optional
+from enum import Enum
+import datetime
+
+
+class Severity(str, Enum):
+    LOW = "LOW"
+    MEDIUM = "MEDIUM"
+    HIGH = "HIGH"
+    CRITICAL = "CRITICAL"
+
+
+class SegmentSpeed(BaseModel):
+    segment_id: str
+    street_name: str
+    speed: float
+    free_flow_speed: float
+    lat: float
+    lon: float
+    bearing: float = 0.0
+    density: float = 0.0
+
+
+class FeedTick(BaseModel):
+    tick: int
+    timestamp: str
+    segments: list[SegmentSpeed]
+
+
+class RiskEntry(BaseModel):
+    segment_id: str
+    street_name: str
+    score: float
+    speed_deviation: float
+    historical_rate: float
+    tod_weight: float
+    lat: float
+    lon: float
+
+
+class IncidentDetection(BaseModel):
+    detected: bool = False
+    incident_id: str = ""
+    street_name: str = ""
+    segment_id: str = ""
+    severity: Severity = Severity.LOW
+    severity_tier: int = 1
+    duration_estimate_min: float = 0.0
+    lat: float = 0.0
+    lon: float = 0.0
+    timestamp: str = ""
+    description: str = ""
+
+
+class SignalRecommendation(BaseModel):
+    intersection_name: str
+    current_phase: str = ""
+    recommended_phase: str
+    phase_duration_s: int
+    reason: str
+    confidence: float
+    sensor_citation: str = ""
+    upstream_distance_m: float = 0.0
+
+
+class DiversionRoute(BaseModel):
+    route_street_names: list[str]
+    route_coords: list[list[float]]
+    diversion_text: str
+    risk_delta_pct: float
+    diversion_volume_pct: float
+    time_delta_min: float = 0.0
+    confidence: float = 0.5
+    why_safer: str = ""
+
+
+class AlertDrafts(BaseModel):
+    vms: list[str] = Field(default_factory=list, description="3 lines, each ≤20 chars")
+    radio_script: str = ""
+    tweet: str = Field(default="", max_length=280)
+
+
+class DensityData(BaseModel):
+    segment_densities: dict[str, float] = Field(default_factory=dict)
+    congestion_level: str = "NORMAL"
+    estimated_vehicles: int = 0
+    vision_analysis: str = ""
+
+
+class TimelineEntry(BaseModel):
+    timestamp: str
+    event: str
+    category: str = "system"
+
+
+class AgentOutput(BaseModel):
+    signal_recommendations: list[SignalRecommendation] = Field(default_factory=list)
+    diversion: Optional[DiversionRoute] = None
+    alerts: Optional[AlertDrafts] = None
+    density: Optional[DensityData] = None
+    final_summary: str = ""
+    confidence_scores: dict[str, float] = Field(default_factory=dict)
+    cascade_risk: float = 0.0
+    rag_context: list[str] = Field(default_factory=list)
+    timeline: list[TimelineEntry] = Field(default_factory=list)
+    evaluation_metrics: dict[str, float] = Field(default_factory=dict)
+
+
+class ChatMessage(BaseModel):
+    role: str
+    content: str
+    timestamp: str = ""
+    tool_calls: list[dict] = Field(default_factory=list)
+    thinking: str = ""
+
+
+class ChatRequest(BaseModel):
+    message: str
+    incident_id: str = ""
+
+
+class ChatResponse(BaseModel):
+    response: str
+    thinking: str = ""
+    tool_calls: list[dict] = Field(default_factory=list)
+    confidence: float = 0.0
+
+
+class TwinPrediction(BaseModel):
+    no_action_segments: list[dict] = Field(default_factory=list)
+    with_action_segments: list[dict] = Field(default_factory=list)
+    time_saved_min: float = 0.0
+    secondary_incidents_prevented: int = 0

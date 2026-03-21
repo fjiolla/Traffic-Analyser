@@ -1,0 +1,44 @@
+INCIDENT SEVERITY CLASSIFICATION
+
+SEVERITY TIERS:
+
+TIER 1 — LOW:
+- Single vehicle, minor property damage, no injuries
+- One lane partially blocked, traffic can flow around
+- Expected duration: 5-15 minutes
+- Response: Signal adjustments only, no diversion needed
+- Staffing: Automated recommendations, officer monitoring
+
+TIER 2 — MEDIUM:
+- Two vehicles, minor injuries, right lane(s) blocked
+- Traffic significantly slowed but not stopped
+- Expected duration: 15-30 minutes
+- Response: Signal re-timing + single diversion route + VMS alerts
+- Staffing: Officer actively managing, EMS may be on scene
+
+TIER 3 — HIGH:
+- Multiple vehicles, confirmed injuries, multiple lanes blocked
+- Traffic queuing rapidly upstream
+- Expected duration: 30-60 minutes
+- Response: Full agent activation (signal + routing + alerts + density monitoring)
+- Staffing: NYPD traffic unit on scene, possible road closure
+
+TIER 4 — CRITICAL:
+- Major pile-up, severe injuries/fatalities, all lanes blocked
+- Complete road closure required
+- Expected duration: 60+ minutes
+- Response: Maximum response — all agents, multiple diversions, media coordination
+- Staffing: NYPD command post, OEM notification, Borough President notification
+
+ESCALATION CRITERIA:
+- Escalate by +1 tier if: Duration exceeds estimate by 50%
+- Escalate by +1 tier if: Secondary incident on diversion route
+- Escalate by +1 tier if: Cascade risk exceeds 0.7
+- De-escalate by -1 tier if: Lanes reopening and speed recovering
+
+BAYESIAN DURATION MODEL:
+Prior probabilities based on NYC DOT historical data:
+- P(LOW) = 0.45, mean_duration = 8 min, std = 3 min
+- P(MEDIUM) = 0.30, mean_duration = 15 min, std = 5 min
+- P(HIGH) = 0.18, mean_duration = 35 min, std = 10 min
+- P(CRITICAL) = 0.07, mean_duration = 60 min, std = 20 min

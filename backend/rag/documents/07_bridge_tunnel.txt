@@ -1,0 +1,38 @@
+BRIDGE AND TUNNEL INCIDENT PROTOCOL
+
+Priority Level: HIGH to CRITICAL
+Applicable: Brooklyn Bridge, Manhattan Bridge, Williamsburg Bridge, Brooklyn-Battery Tunnel
+
+SPECIAL CONSIDERATIONS:
+- Bridge/tunnel incidents have outsized network impact (limited crossing capacity)
+- Diversion must account for extreme bottleneck effects
+- Coordinate with TBTA/MTA for tunnel incidents
+- Consider impact on BOTH Brooklyn and Manhattan traffic
+
+DETECTION:
+- Speed drop on bridge approach segments (within 1km of bridge)
+- Speed drop on bridge itself (if sensor data available)
+- Cross-reference with TBTA alert feed
+
+SIGNAL MANAGEMENT:
+- Reduce green time on bridge approach to meter remaining vehicles
+- Extend green on parallel streets to absorb diverted traffic
+- Activate "bridge closed" messaging on VMS 2km upstream
+- Coordinate with Manhattan-side signal controllers
+
+DIVERSION:
+- If Brooklyn Bridge closed: divert to Manhattan Bridge or Williamsburg Bridge
+- If multiple bridges affected: activate tunnel routing
+- Include subway alternatives in public messaging (MTA coordination)
+- Monitor alternate bridge approaches for cascade congestion
+
+PUBLIC ALERTS:
+- VMS: "BRIDGE CLOSED" messaging at all decision points before bridge approaches
+- Radio: Include transit alternatives (subway lines, ferries)
+- Social media: Real-time bridge status with photo if available
+- Update every 5 minutes during bridge closure
+
+CAPACITY:
+- Each East River bridge carries approximately 100,000 vehicles/day
+- Closure of one bridge increases load on remaining by ~30-40%
+- Plan for minimum 2-hour diversion in bridge incidents

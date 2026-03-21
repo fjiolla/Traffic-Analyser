@@ -1,0 +1,34 @@
+MULTI-VEHICLE COLLISION RESPONSE PROTOCOL
+
+Priority Level: HIGH to CRITICAL
+Applicable Area: All Brooklyn arterial roads
+
+IMMEDIATE ACTIONS (0-5 minutes):
+1. Confirm incident location and number of vehicles involved via sensor data
+2. Dispatch NYPD traffic unit and FDNY if injuries reported
+3. Activate upstream signal pre-emption within 600m radius
+4. Begin drafting VMS, radio, and social media alerts
+
+SIGNAL MANAGEMENT:
+- Extend green phase on perpendicular streets to flush traffic away from incident
+- Reduce cycle time on incident approach by 30-40%
+- Activate pedestrian hold on affected crosswalks
+- Coordinate with adjacent intersections to create "green wave" away from scene
+
+DIVERSION PROTOCOL:
+- Identify 2-3 alternate routes using risk-weighted pathfinding
+- Prefer routes with excess capacity (density < 60 veh/km)
+- Avoid school zones during active hours (7:30-8:30, 14:30-15:30)
+- Deploy portable VMS at diversion points within 10 minutes
+
+LANE REOPENING CRITERIA:
+- Speed on affected segment must recover to >60% of free-flow baseline
+- Risk score must drop below 0.5
+- No secondary incidents reported on adjacent segments
+- Physical debris fully cleared (confirmed by on-scene unit)
+
+DOCUMENTATION:
+- Log all signal timing changes with timestamps
+- Record diversion activation and deactivation times
+- Note response time from detection to first recommendation
+- Export timeline for post-incident review

@@ -1,0 +1,27 @@
+SCHOOL ZONE INCIDENT MANAGEMENT
+
+Priority Level: HIGH (always elevated near schools)
+Active Hours: 07:30-08:30, 14:30-15:30 (school days)
+
+SPECIAL CONSIDERATIONS:
+- Speed limits automatically reduced to 20 mph in school zones
+- Enhanced pedestrian protection — do not reduce pedestrian crossing time
+- Diversion routes must NEVER pass through active school zones
+- Deploy school crossing guards to alternate pedestrian routes if needed
+
+SIGNAL MANAGEMENT NEAR SCHOOLS:
+- Maintain minimum pedestrian phase (MUTCD Section 4E.06)
+- Leading pedestrian intervals (LPI) must not be shortened
+- If school zone is within 600m upstream window, prioritize pedestrian safety over vehicle throughput
+- No right-turn-on-red during active school hours
+
+INCIDENT DURING SCHOOL HOURS:
+1. Notify school district immediately if incident is within 500m of a school
+2. Consider early dismissal coordination if road closure affects school bus routes
+3. Activate crossing guard at alternate intersections
+4. VMS messaging must include "SCHOOL ZONE — SLOW DOWN"
+
+DIVERSION RESTRICTIONS:
+- Do not route diverted traffic through residential streets adjacent to schools
+- Maximum acceptable vehicle density on school zone streets: 40 veh/km
+- If no school-zone-free diversion exists, reduce diversion volume to 15%

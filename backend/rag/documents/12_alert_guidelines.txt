@@ -1,0 +1,36 @@
+VMS AND PUBLIC ALERT GUIDELINES
+
+VARIABLE MESSAGE SIGN STANDARDS:
+- Maximum 3 lines per message phase
+- Maximum 20 characters per line (including spaces)
+- ALL CAPS required
+- No abbreviations unless universally understood (AVE, BLVD, ST, PKWY)
+- Display time: minimum 3 seconds per phase, maximum 2 phases per cycle
+- Refresh cycle: 6-8 seconds total
+
+ACCEPTABLE ABBREVIATIONS:
+AVE (Avenue), BLVD (Boulevard), ST (Street), PKWY (Parkway),
+RD (Road), HWY (Highway), N/S/E/W (directions), MIN (minutes),
+ALT (Alternate), RT (Route), CLR (Clear), TEMP (Temporary)
+
+RADIO BROADCAST STANDARDS:
+- Duration: 15 seconds (approximately 35-40 words)
+- Opening: "Brooklyn traffic advisory" or "[Borough] traffic alert"
+- Include: Location, impact, recommended action
+- Tone: Professional, calm, urgent but not alarming
+- Repeat key information: Location mentioned twice
+- End with: "Seek alternate routes" or specific diversion
+
+SOCIAL MEDIA STANDARDS:
+- Character limit: 280 (Twitter/X compatibility)
+- Required hashtag: #BrooklynTraffic
+- Include: Severity emoji (⚠️ or 🚨), location, impact, advice
+- No speculation about cause or injuries
+- Link to 511NY for real-time updates
+- Posting schedule: Initial post + update every 15 minutes until resolved
+- Tone: Factual, professional, empathetic
+
+TIMING PRIORITY:
+1. VMS signs: Activate within 60 seconds of alert decision
+2. Social media: Post within 90 seconds
+3. Radio: Broadcast within 3 minutes (requires studio upload)

@@ -1,0 +1,32 @@
+EMERGENCY VEHICLE CORRIDOR PROTOCOL
+
+Priority Level: CRITICAL
+Applicable: All routes to Brooklyn hospitals (Methodist, LICH, Kings County, Maimonides)
+
+OBJECTIVE:
+Create clear corridors for emergency vehicles responding to or from incident scenes.
+Signal pre-emption takes priority over traffic flow optimization.
+
+SIGNAL PRE-EMPTION RULES:
+- Immediately extend green on the emergency vehicle's approach
+- Hold red on all conflicting phases for 15-20 seconds
+- Resume normal operation 30 seconds after vehicle passes
+- Maximum pre-emption duration: 45 seconds per intersection
+
+CORRIDOR IDENTIFICATION:
+Priority hospital routes in Brooklyn:
+1. Flatbush Ave corridor → NYC Health + Hospitals/Kings County
+2. Atlantic Ave corridor → Brooklyn Methodist Hospital
+3. Henry St → Long Island College Hospital
+4. 48th St corridor → Maimonides Medical Center
+5. Bushwick Ave → Wyckoff Heights Medical Center
+
+COORDINATION:
+- Signal agent must flag when emergency corridor conflicts with diversion route
+- If diversion uses an emergency corridor, reroute diversion immediately
+- Emergency vehicles always take priority over traffic optimization
+
+DOCUMENTATION:
+- Log pre-emption activation and duration for each intersection
+- Record emergency vehicle travel time for performance tracking
+- Note any conflicts between pre-emption and active diversions

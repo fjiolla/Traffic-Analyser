@@ -1,0 +1,39 @@
+HAZARDOUS MATERIAL SPILL PROTOCOL
+
+Priority Level: CRITICAL
+Coordinate with: FDNY HazMat, NYPD ESU, DEP
+
+DETECTION:
+- Sudden speed drop to near-zero in localized area
+- May or may not involve vehicle collision
+- Confirm via camera feed or on-scene report
+
+IMMEDIATE ACTIONS:
+1. Establish 500m exclusion zone (wider than standard collision)
+2. Close ALL road segments within exclusion zone
+3. Diversion radius: minimum 1.5km from spill location
+4. Alert FDNY HazMat team — estimated response time 8-12 minutes
+
+SIGNAL MANAGEMENT:
+- All intersections within 500m: switch to flash mode (red)
+- Intersections at 500m-1km: extend green AWAY from incident
+- Create one-way outbound flow on all radial streets from incident
+- Do NOT create green waves toward the incident (prevents rubbernecking)
+
+DIVERSION:
+- Use only routes confirmed to be UPWIND from spill
+- Coordinate with FDNY for wind direction updates every 15 minutes
+- Consider complete sector closure if material is airborne
+- No pedestrian routing through affected area
+
+PUBLIC ALERTS:
+- VMS: "ROAD CLOSED - HAZMAT INCIDENT - SEEK ALT ROUTE"
+- Radio: Include shelter-in-place advisory if airborne contaminant
+- Social media: Link to NYC OEM updates, include wind direction
+- Duration: Minimum 2-hour expected closure (adjust based on HazMat assessment)
+
+DOCUMENTATION:
+- Record exact spill location, estimated quantity, material type
+- Track wind direction and changes
+- Log exclusion zone boundaries and modifications
+- Coordinate with DEP for environmental cleanup timeline

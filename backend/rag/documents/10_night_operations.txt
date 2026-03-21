@@ -1,0 +1,39 @@
+NIGHT OPERATIONS PROTOCOL
+
+Priority Level: Varies
+Active Hours: 22:00-06:00
+
+OVERVIEW:
+Night operations differ from daytime in several critical ways:
+- Lower traffic volume but higher per-incident severity
+- Reduced visibility increases secondary incident risk
+- Fewer available NYPD traffic units
+- Signal timing is already in lower-volume plans
+
+DETECTION ADJUSTMENTS:
+- Sensitivity threshold reduced — smaller speed drops trigger alerts
+- Risk score time-of-day component weighted for impaired driving patterns
+- Friday/Saturday nights: 40% higher incident rate baseline (DUI patterns)
+
+SIGNAL MANAGEMENT:
+- Many intersections already on flash mode (flash yellow)
+- If switching to active control, use conservative cycle lengths (90-120s)
+- Maintain minimum green times for pedestrian safety
+- Visibility-enhanced signal timing (longer amber phases)
+
+DIVERSION:
+- Prefer well-lit arterial routes over residential streets
+- Avoid dark, narrow streets even if theoretically faster
+- Consider reduced speed limits on diversion routes (25 mph max)
+- Fewer alternative routes available (lower-classification roads may be less safe)
+
+PUBLIC ALERTS:
+- VMS: ALL CAPS, maximum brightness setting
+- Radio: Late-night radio stations and navigation app integration
+- Social media: May have lower reach; coordinate with NYPD social accounts
+- Consider 311 push notifications for registered users in affected area
+
+STAFFING:
+- Automated system operates with reduced human oversight
+- Escalation threshold lowered — alert supervisor for MEDIUM+ incidents
+- On-call NYPD traffic unit contact maintained

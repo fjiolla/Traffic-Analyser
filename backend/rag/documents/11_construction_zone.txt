@@ -1,0 +1,38 @@
+CONSTRUCTION ZONE INCIDENT PROTOCOL
+
+Priority Level: ELEVATED (all incidents in work zones)
+Reference: NYC DOT Work Zone Traffic Control Manual
+
+SPECIAL CONSIDERATIONS:
+- Reduced lane capacity already in effect
+- Worker safety is paramount — any incident near workers escalates by +1 tier
+- Temporary traffic patterns may confuse unfamiliar drivers
+- Construction equipment may be blocking additional lanes
+
+DETECTION:
+- Speed baseline must account for existing construction restrictions
+- Anomaly detection threshold adjusted: 25% drop (vs standard 40%)
+- Flag any incident within 200m of active work zone
+
+SIGNAL MANAGEMENT:
+- Maintain construction-zone signal plans — do not override without approval
+- If flaggers are present, coordinate signal changes with flagger operations
+- No automated signal changes within active work zone without human confirmation
+
+DIVERSION:
+- Do not route diverted traffic through other construction zones
+- Account for reduced capacity on work zone approaches
+- Coordinate with DOT Contractor for potential work suspension
+- Night construction: increased diversion radius (800m vs 600m)
+
+PUBLIC ALERTS:
+- VMS: Include "WORK ZONE" in messaging
+- Radio: Mention construction zone — drivers already expect delays
+- Social media: Tag @NYC_DOT for coordination
+- Link to NYC DOT permit database for construction schedule
+
+WORKER SAFETY:
+- If incident is within active work zone, PAUSE work immediately
+- Ensure workers are behind barriers before allowing any lane changes
+- Coordinate with construction supervisor before reopening lanes
+- Document worker proximity to incident for OSHA reporting
