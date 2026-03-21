@@ -23,6 +23,7 @@ export const api = {
   getTwinData: () => fetchAPI<any>("/api/twin"),
   getChatHistory: () => fetchAPI<any>("/api/chat/history"),
   getDocuments: () => fetchAPI<any>("/api/documents"),
+  getWeather: () => fetchAPI<any>("/api/weather"),
   
   triggerIncident: (severity: string = "HIGH") =>
     fetchAPI<any>("/api/trigger-incident", {

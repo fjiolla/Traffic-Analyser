@@ -137,3 +137,13 @@ export interface Hotspot {
   lon: number;
   rate: number;
 }
+
+export interface WeatherCondition {
+  condition: string;
+  temp_f: number;
+  precip_pct: number;
+  wind_mph: number;
+  is_severe: boolean;
+  description: string;
+  timestamp: string;
+}

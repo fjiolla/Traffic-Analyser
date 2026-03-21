@@ -25,6 +25,7 @@ from models.schemas import (
     FeedTick, TimelineEntry,
 )
 from rag.retriever import get_all_documents
+from core.weather_service import get_weather as fetch_weather
 from typing import Optional
 
 
@@ -198,6 +199,21 @@ async def get_timeline():
 async def get_hotspots_endpoint():
     """Get Brooklyn black-spot hotspot data."""
     return {"hotspots": get_hotspots()}
+
+
+@app.get("/api/weather")
+async def get_weather_endpoint():
+    """Get current Brooklyn weather conditions."""
+    weather = await fetch_weather()
+    return {
+        "condition": weather.condition,
+        "temp_f": weather.temp_f,
+        "precip_pct": weather.precip_pct,
+        "wind_mph": weather.wind_mph,
+        "is_severe": weather.is_severe,
+        "description": weather.description,
+        "timestamp": weather.timestamp,
+    }
 
 
 @app.get("/api/documents")

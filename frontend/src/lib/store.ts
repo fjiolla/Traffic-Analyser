@@ -2,7 +2,7 @@
 import { create } from "zustand";
 import type {
   SegmentSpeed, RiskEntry, IncidentDetection, AgentOutput,
-  ChatMessage, TimelineEntry, Metrics, DensityData,
+  ChatMessage, TimelineEntry, Metrics, DensityData, WeatherCondition,
 } from "./types";
 
 interface TrafficStore {
@@ -43,6 +43,10 @@ interface TrafficStore {
   density: DensityData | null;
   setDensity: (d: DensityData | null) => void;
 
+  // Weather
+  weather: WeatherCondition | null;
+  setWeather: (w: WeatherCondition | null) => void;
+
   // UI
   activePanel: string;
   setActivePanel: (p: string) => void;
@@ -79,6 +83,9 @@ export const useTrafficStore = create<TrafficStore>((set) => ({
 
   density: null,
   setDensity: (density) => set({ density }),
+
+  weather: null,
+  setWeather: (weather) => set({ weather }),
 
   activePanel: "signals",
   setActivePanel: (activePanel) => set({ activePanel }),

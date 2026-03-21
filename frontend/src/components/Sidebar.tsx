@@ -4,10 +4,12 @@
 import { useEffect, useState } from "react";
 import {
   Activity, AlertTriangle, Clock, Radio, Gauge,
-  Zap, CheckCircle, Circle,
+  Zap, CheckCircle, Circle, CloudRain, Cloud, Sun,
+  Snowflake, Wind, CloudFog, CloudLightning,
 } from "lucide-react";
 import { useTrafficStore } from "@/lib/store";
 import { severityBg, formatHour, cn } from "@/lib/utils";
+import { api } from "@/lib/api";
 
 export default function Sidebar() {
   const connected = useTrafficStore((s) => s.connected);
@@ -18,8 +20,20 @@ export default function Sidebar() {
   const processing = useTrafficStore((s) => s.processing);
   const incidentStartTime = useTrafficStore((s) => s.incidentStartTime);
   const density = useTrafficStore((s) => s.density);
+  const weather = useTrafficStore((s) => s.weather);
+  const setWeather = useTrafficStore((s) => s.setWeather);
 
   const [elapsed, setElapsed] = useState("00:00");
+
+  // Poll weather every 5 minutes
+  useEffect(() => {
+    const fetchWeather = () => {
+      api.getWeather().then(setWeather).catch(() => {});
+    };
+    fetchWeather();
+    const interval = setInterval(fetchWeather, 5 * 60 * 1000);
+    return () => clearInterval(interval);
+  }, [setWeather]);
 
   useEffect(() => {
     if (!incidentStartTime) {
@@ -81,6 +95,42 @@ export default function Sidebar() {
           {formatHour(hour)}
         </p>
       </div>
+
+      {/* Weather */}
+      {weather && (
+        <div className="px-4 py-3 border-b border-border">
+          <div className="flex items-center gap-2 text-xs text-muted mb-1">
+            {weather.condition === "snow" || weather.condition === "ice" ? (
+              <Snowflake className="w-3.5 h-3.5" />
+            ) : weather.condition === "rain" || weather.condition === "heavy_rain" ? (
+              <CloudRain className="w-3.5 h-3.5" />
+            ) : weather.condition === "fog" ? (
+              <CloudFog className="w-3.5 h-3.5" />
+            ) : weather.condition === "wind" ? (
+              <Wind className="w-3.5 h-3.5" />
+            ) : weather.condition === "cloudy" || weather.condition === "partly_cloudy" ? (
+              <Cloud className="w-3.5 h-3.5" />
+            ) : (
+              <Sun className="w-3.5 h-3.5" />
+            )}
+            <span>Weather</span>
+          </div>
+          <div className="pl-5.5 space-y-0.5">
+            <p className="text-sm font-semibold text-foreground">
+              {Math.round(weather.temp_f)}°F — {weather.description}
+            </p>
+            <div className="flex gap-3 text-[10px] text-muted">
+              <span>💧 {weather.precip_pct}%</span>
+              <span>💨 {weather.wind_mph} mph</span>
+            </div>
+            {weather.is_severe && (
+              <p className="text-[10px] font-semibold text-danger mt-0.5">
+                ⚠ Severe weather — routing affected
+              </p>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Incident Status */}
       <div className="px-4 py-3 border-b border-border">

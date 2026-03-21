@@ -129,6 +129,16 @@ class ChatResponse(BaseModel):
     confidence: float = 0.0
 
 
+class WeatherConditionSchema(BaseModel):
+    condition: str = "clear"
+    temp_f: float = 55.0
+    precip_pct: int = 0
+    wind_mph: float = 5.0
+    is_severe: bool = False
+    description: str = ""
+    timestamp: str = ""
+
+
 class TwinPrediction(BaseModel):
     no_action_segments: list[dict] = Field(default_factory=list)
     with_action_segments: list[dict] = Field(default_factory=list)
