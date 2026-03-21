@@ -1,11 +1,12 @@
 /* ── Traffic Map — Mapbox GL + speed-colored markers ── */
 "use client";
 
-import { useMemo, useCallback } from "react";
+import { useMemo, useCallback, useEffect } from "react";
 import Map, { Source, Layer, Marker, NavigationControl } from "react-map-gl/mapbox";
 import "mapbox-gl/dist/mapbox-gl.css";
 import { useTrafficStore } from "@/lib/store";
 import { speedToColor, severityColor } from "@/lib/utils";
+import { api } from "@/lib/api";
 import type { SegmentSpeed, RiskEntry } from "@/lib/types";
 
 const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN || "";
@@ -16,6 +17,21 @@ export default function TrafficMap() {
   const riskMap = useTrafficStore((s) => s.riskMap);
   const incident = useTrafficStore((s) => s.incident);
   const agentOutput = useTrafficStore((s) => s.agentOutput);
+  const predictedHotspots = useTrafficStore((s) => s.predictedHotspots);
+  const setPredictedHotspots = useTrafficStore((s) => s.setPredictedHotspots);
+
+  // Fetch predicted hotspots on mount + 60s refresh
+  useEffect(() => {
+    const fetchHotspots = async () => {
+      try {
+        const data = await api.getPredictedHotspots();
+        if (data?.clusters) setPredictedHotspots(data.clusters);
+      } catch { /* silently retry next cycle */ }
+    };
+    fetchHotspots();
+    const interval = setInterval(fetchHotspots, 60_000);
+    return () => clearInterval(interval);
+  }, [setPredictedHotspots]);
 
   // Segment Points GeoJSON
   const segmentGeoJSON = useMemo(() => {
@@ -65,6 +81,26 @@ export default function TrafficMap() {
       properties: {},
     };
   }, [agentOutput]);
+
+  // Predicted hotspot circles GeoJSON
+  const hotspotGeoJSON = useMemo(() => {
+    return {
+      type: "FeatureCollection" as const,
+      features: predictedHotspots.map((h) => ({
+        type: "Feature" as const,
+        geometry: {
+          type: "Point" as const,
+          coordinates: [h.center_lon, h.center_lat],
+        },
+        properties: {
+          risk_score: h.risk_score,
+          accident_count: h.accident_count,
+          severity_score: h.severity_score,
+          radius_m: h.radius_m,
+        },
+      })),
+    };
+  }, [predictedHotspots]);
 
   return (
     <div className="w-full h-full relative">
@@ -133,6 +169,33 @@ export default function TrafficMap() {
           </Source>
         )}
 
+        {/* Predicted Hotspot Zones */}
+        {predictedHotspots.length > 0 && (
+          <Source id="predicted-hotspots" type="geojson" data={hotspotGeoJSON}>
+            <Layer
+              id="hotspot-circles"
+              type="circle"
+              paint={{
+                "circle-radius": [
+                  "interpolate", ["linear"], ["get", "risk_score"],
+                  5, 12,
+                  20, 22,
+                  50, 35,
+                ],
+                "circle-color": [
+                  "interpolate", ["linear"], ["get", "risk_score"],
+                  5, "rgba(251, 146, 60, 0.5)",
+                  20, "rgba(239, 68, 68, 0.55)",
+                  50, "rgba(185, 28, 28, 0.6)",
+                ],
+                "circle-stroke-width": 1.5,
+                "circle-stroke-color": "rgba(220, 38, 38, 0.7)",
+                "circle-opacity": 0.6,
+              }}
+            />
+          </Source>
+        )}
+
         {/* Incident Marker */}
         {incident && (
           <Marker
@@ -167,10 +230,19 @@ export default function TrafficMap() {
           <div className="w-3 h-3 rounded-full bg-amber-500" />
           <span className="text-slate-600">40–70%</span>
         </div>
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-1.5 mb-1">
           <div className="w-3 h-3 rounded-full bg-red-500" />
           <span className="text-slate-600">&lt; 40% (Congested)</span>
         </div>
+        {predictedHotspots.length > 0 && (
+          <>
+            <div className="border-t border-slate-200 my-1.5" />
+            <div className="flex items-center gap-1.5">
+              <div className="w-3 h-3 rounded-full bg-red-400/60 border border-red-500/70" />
+              <span className="text-slate-600">Predicted Hotspot</span>
+            </div>
+          </>
+        )}
       </div>
     </div>
   );

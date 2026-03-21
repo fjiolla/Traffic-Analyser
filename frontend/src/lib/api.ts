@@ -24,6 +24,7 @@ export const api = {
   getChatHistory: () => fetchAPI<any>("/api/chat/history"),
   getDocuments: () => fetchAPI<any>("/api/documents"),
   getWeather: () => fetchAPI<any>("/api/weather"),
+  getPredictedHotspots: () => fetchAPI<any>("/api/hotspots/predicted"),
   
   triggerIncident: (severity: string = "HIGH") =>
     fetchAPI<any>("/api/trigger-incident", {

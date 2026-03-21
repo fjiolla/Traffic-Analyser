@@ -139,6 +139,16 @@ class WeatherConditionSchema(BaseModel):
     timestamp: str = ""
 
 
+class HotspotCluster(BaseModel):
+    cluster_id: int
+    center_lat: float
+    center_lon: float
+    accident_count: int
+    severity_score: float
+    risk_score: float
+    radius_m: float
+
+
 class TwinPrediction(BaseModel):
     no_action_segments: list[dict] = Field(default_factory=list)
     with_action_segments: list[dict] = Field(default_factory=list)

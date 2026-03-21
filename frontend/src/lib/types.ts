@@ -138,6 +138,16 @@ export interface Hotspot {
   rate: number;
 }
 
+export interface PredictedHotspot {
+  cluster_id: number;
+  center_lat: number;
+  center_lon: number;
+  accident_count: number;
+  severity_score: number;
+  risk_score: number;
+  radius_m: number;
+}
+
 export interface WeatherCondition {
   condition: string;
   temp_f: number;

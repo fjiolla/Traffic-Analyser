@@ -3,6 +3,7 @@ import { create } from "zustand";
 import type {
   SegmentSpeed, RiskEntry, IncidentDetection, AgentOutput,
   ChatMessage, TimelineEntry, Metrics, DensityData, WeatherCondition,
+  PredictedHotspot,
 } from "./types";
 
 interface TrafficStore {
@@ -47,6 +48,10 @@ interface TrafficStore {
   weather: WeatherCondition | null;
   setWeather: (w: WeatherCondition | null) => void;
 
+  // Predicted Hotspots
+  predictedHotspots: PredictedHotspot[];
+  setPredictedHotspots: (h: PredictedHotspot[]) => void;
+
   // UI
   activePanel: string;
   setActivePanel: (p: string) => void;
@@ -86,6 +91,9 @@ export const useTrafficStore = create<TrafficStore>((set) => ({
 
   weather: null,
   setWeather: (weather) => set({ weather }),
+
+  predictedHotspots: [],
+  setPredictedHotspots: (predictedHotspots) => set({ predictedHotspots }),
 
   activePanel: "signals",
   setActivePanel: (activePanel) => set({ activePanel }),

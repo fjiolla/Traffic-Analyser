@@ -26,6 +26,7 @@ from models.schemas import (
 )
 from rag.retriever import get_all_documents
 from core.weather_service import get_weather as fetch_weather
+from core.hotspot_predictor import predict_hotspots as predict_hotspot_clusters
 from typing import Optional
 
 
@@ -199,6 +200,13 @@ async def get_timeline():
 async def get_hotspots_endpoint():
     """Get Brooklyn black-spot hotspot data."""
     return {"hotspots": get_hotspots()}
+
+
+@app.get("/api/hotspots/predicted")
+async def get_predicted_hotspots():
+    """Get DBSCAN-predicted accident hotspot clusters."""
+    clusters = predict_hotspot_clusters()
+    return {"clusters": clusters}
 
 
 @app.get("/api/weather")
