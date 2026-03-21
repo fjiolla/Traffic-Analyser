@@ -157,3 +157,40 @@ export interface WeatherCondition {
   description: string;
   timestamp: string;
 }
+
+export type VehicleType = "normal" | "ambulance" | "police" | "fire_brigade";
+
+export interface GeocodeSuggestion {
+  place_name: string;
+  lat: number;
+  lon: number;
+}
+
+export interface CandidateRoute {
+  route_index: number;
+  rank: string;
+  color: string;
+  street_names: string[];
+  coords: number[][];
+  total_length_km: number;
+  total_travel_time_min: number;
+  avg_density: number;
+  avg_accident_score: number;
+  avg_weather_penalty: number;
+  composite_score: number;
+  is_optimal: boolean;
+  signal_preemptions: Array<{
+    intersection: string;
+    lat: number;
+    lon: number;
+    action: string;
+  }>;
+}
+
+export interface RouteResponse {
+  routes: CandidateRoute[];
+  origin: { lat: number; lon: number };
+  destination: { lat: number; lon: number };
+  vehicle_type: string;
+  weather_condition: string;
+}

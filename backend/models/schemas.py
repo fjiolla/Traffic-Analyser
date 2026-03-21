@@ -149,6 +149,45 @@ class HotspotCluster(BaseModel):
     radius_m: float
 
 
+class RouteRequest(BaseModel):
+    origin_lat: float
+    origin_lon: float
+    dest_lat: float
+    dest_lon: float
+    k: int = 3
+    vehicle_type: str = "normal"
+
+
+class CandidateRoute(BaseModel):
+    route_index: int
+    rank: str = "optimal"
+    color: str = "#10B981"
+    street_names: list[str] = Field(default_factory=list)
+    coords: list[list[float]] = Field(default_factory=list)
+    total_length_km: float = 0.0
+    total_travel_time_min: float = 0.0
+    avg_density: float = 0.0
+    avg_accident_score: float = 0.0
+    avg_weather_penalty: float = 1.0
+    composite_score: float = 0.0
+    is_optimal: bool = False
+    signal_preemptions: list[dict] = Field(default_factory=list)
+
+
+class RouteResponse(BaseModel):
+    routes: list[CandidateRoute] = Field(default_factory=list)
+    origin: dict = Field(default_factory=dict)
+    destination: dict = Field(default_factory=dict)
+    vehicle_type: str = "normal"
+    weather_condition: str = "clear"
+
+
+class GeocodeSuggestion(BaseModel):
+    place_name: str
+    lat: float
+    lon: float
+
+
 class TwinPrediction(BaseModel):
     no_action_segments: list[dict] = Field(default_factory=list)
     with_action_segments: list[dict] = Field(default_factory=list)

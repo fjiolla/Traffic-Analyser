@@ -3,7 +3,7 @@ import { create } from "zustand";
 import type {
   SegmentSpeed, RiskEntry, IncidentDetection, AgentOutput,
   ChatMessage, TimelineEntry, Metrics, DensityData, WeatherCondition,
-  PredictedHotspot,
+  PredictedHotspot, CandidateRoute, VehicleType, GeocodeSuggestion,
 } from "./types";
 
 interface TrafficStore {
@@ -52,6 +52,24 @@ interface TrafficStore {
   predictedHotspots: PredictedHotspot[];
   setPredictedHotspots: (h: PredictedHotspot[]) => void;
 
+  // Route Intelligence
+  dashboardMode: "overview" | "route";
+  setDashboardMode: (m: "overview" | "route") => void;
+  vehicleType: VehicleType;
+  setVehicleType: (v: VehicleType) => void;
+  routeOrigin: { lat: number; lon: number; name: string } | null;
+  setRouteOrigin: (o: { lat: number; lon: number; name: string } | null) => void;
+  routeDestination: { lat: number; lon: number; name: string } | null;
+  setRouteDestination: (d: { lat: number; lon: number; name: string } | null) => void;
+  candidateRoutes: CandidateRoute[];
+  setCandidateRoutes: (r: CandidateRoute[]) => void;
+  selectedRouteIndex: number;
+  setSelectedRouteIndex: (i: number) => void;
+  routeLoading: boolean;
+  setRouteLoading: (v: boolean) => void;
+  routeWeatherCondition: string;
+  setRouteWeatherCondition: (c: string) => void;
+
   // UI
   activePanel: string;
   setActivePanel: (p: string) => void;
@@ -94,6 +112,29 @@ export const useTrafficStore = create<TrafficStore>((set) => ({
 
   predictedHotspots: [],
   setPredictedHotspots: (predictedHotspots) => set({ predictedHotspots }),
+
+  dashboardMode: "overview",
+  setDashboardMode: (dashboardMode) => set({
+    dashboardMode,
+    ...(dashboardMode === "overview" ? {
+      routeOrigin: null, routeDestination: null,
+      candidateRoutes: [], selectedRouteIndex: 0,
+    } : {}),
+  }),
+  vehicleType: "normal",
+  setVehicleType: (vehicleType) => set({ vehicleType }),
+  routeOrigin: null,
+  setRouteOrigin: (routeOrigin) => set({ routeOrigin }),
+  routeDestination: null,
+  setRouteDestination: (routeDestination) => set({ routeDestination }),
+  candidateRoutes: [],
+  setCandidateRoutes: (candidateRoutes) => set({ candidateRoutes }),
+  selectedRouteIndex: 0,
+  setSelectedRouteIndex: (selectedRouteIndex) => set({ selectedRouteIndex }),
+  routeLoading: false,
+  setRouteLoading: (routeLoading) => set({ routeLoading }),
+  routeWeatherCondition: "clear",
+  setRouteWeatherCondition: (routeWeatherCondition) => set({ routeWeatherCondition }),
 
   activePanel: "signals",
   setActivePanel: (activePanel) => set({ activePanel }),

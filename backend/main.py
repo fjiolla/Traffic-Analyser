@@ -27,7 +27,13 @@ from models.schemas import (
 from rag.retriever import get_all_documents
 from core.weather_service import get_weather as fetch_weather
 from core.hotspot_predictor import predict_hotspots as predict_hotspot_clusters
+from core.route_finder import find_routes as compute_routes
+from models.schemas import RouteRequest
+from fastapi.responses import StreamingResponse
 from typing import Optional
+import httpx
+import io
+import csv
 
 
 class IncidentTriggerRequest(BaseModel):
@@ -316,6 +322,119 @@ async def get_twin_data():
         "time_saved_min": time_saved,
         "incident": incident.model_dump() if incident else None,
     }
+
+
+# ─── Route Intelligence ────────────────────────────────────
+
+_last_route_response = None
+
+
+@app.get("/api/geocode")
+async def geocode_search(q: str):
+    """Proxy geocoding to Mapbox — restricted to Brooklyn bbox."""
+    token = os.getenv("MAPBOX_TOKEN", "")
+    if not token:
+        raise HTTPException(status_code=500, detail="MAPBOX_TOKEN not configured")
+    bbox = "-74.05,40.57,-73.83,40.74"  # Brooklyn bounding box
+    url = "https://api.mapbox.com/search/geocode/v6/forward"
+    async with httpx.AsyncClient() as client:
+        resp = await client.get(url, params={
+            "q": q,
+            "access_token": token,
+            "bbox": bbox,
+            "limit": 5,
+            "language": "en",
+        })
+        resp.raise_for_status()
+        data = resp.json()
+    suggestions = []
+    for feat in data.get("features", []):
+        props = feat.get("properties", {})
+        coords = feat.get("geometry", {}).get("coordinates", [0, 0])
+        suggestions.append({
+            "place_name": props.get("full_address", props.get("name", "")),
+            "lat": coords[1],
+            "lon": coords[0],
+        })
+    return {"suggestions": suggestions}
+
+
+@app.post("/api/routes")
+async def compute_routes_endpoint(body: RouteRequest):
+    """Compute k-shortest routes between origin and destination."""
+    global _last_route_response
+    state = traffic_graph.get_state() if traffic_graph else {}
+    snapshot = state.get("snapshot", [])
+    risk = state.get("risk_map", [])
+    hour = state.get("hour", 12.0)
+
+    # Get current weather condition
+    weather_cond = "clear"
+    try:
+        w = await fetch_weather()
+        weather_cond = w.condition
+    except Exception:
+        pass
+
+    routes = compute_routes(
+        origin_lat=body.origin_lat,
+        origin_lon=body.origin_lon,
+        dest_lat=body.dest_lat,
+        dest_lon=body.dest_lon,
+        k=body.k,
+        feed_snapshot=snapshot,
+        risk_map=risk,
+        vehicle_type=body.vehicle_type,
+        weather_condition=weather_cond,
+    )
+
+    response = {
+        "routes": routes,
+        "origin": {"lat": body.origin_lat, "lon": body.origin_lon},
+        "destination": {"lat": body.dest_lat, "lon": body.dest_lon},
+        "vehicle_type": body.vehicle_type,
+        "weather_condition": weather_cond,
+    }
+    _last_route_response = response
+    return response
+
+
+@app.get("/api/routes/csv")
+async def export_routes_csv():
+    """Export last computed routes as CSV."""
+    if not _last_route_response or not _last_route_response.get("routes"):
+        raise HTTPException(status_code=404, detail="No routes computed yet")
+
+    output = io.StringIO()
+    writer = csv.writer(output)
+    writer.writerow([
+        "route_index", "rank", "street_names", "total_length_km",
+        "total_travel_time_min", "avg_density", "avg_accident_score",
+        "avg_weather_penalty", "composite_score", "is_optimal",
+        "vehicle_type", "weather_condition",
+    ])
+    for r in _last_route_response["routes"]:
+        writer.writerow([
+            r["route_index"],
+            r["rank"],
+            " → ".join(r["street_names"]),
+            r["total_length_km"],
+            r["total_travel_time_min"],
+            r["avg_density"],
+            r["avg_accident_score"],
+            r["avg_weather_penalty"],
+            r["composite_score"],
+            r["is_optimal"],
+            _last_route_response.get("vehicle_type", "normal"),
+            _last_route_response.get("weather_condition", "clear"),
+        ])
+
+    output.seek(0)
+    return StreamingResponse(
+        iter([output.getvalue()]),
+        media_type="text/csv",
+        headers={"Content-Disposition": "attachment; filename=routes.csv"},
+    )
 
 
 # ─── Actions ───────────────────────────────────────────────

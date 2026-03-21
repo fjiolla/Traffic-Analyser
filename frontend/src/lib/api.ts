@@ -25,6 +25,27 @@ export const api = {
   getDocuments: () => fetchAPI<any>("/api/documents"),
   getWeather: () => fetchAPI<any>("/api/weather"),
   getPredictedHotspots: () => fetchAPI<any>("/api/hotspots/predicted"),
+
+  geocodeSearch: (query: string) =>
+    fetchAPI<any>(`/api/geocode?q=${encodeURIComponent(query)}`),
+
+  findRoutes: (origin: { lat: number; lon: number }, dest: { lat: number; lon: number }, k: number = 3, vehicleType: string = "normal") =>
+    fetchAPI<any>("/api/routes", {
+      method: "POST",
+      body: JSON.stringify({
+        origin_lat: origin.lat, origin_lon: origin.lon,
+        dest_lat: dest.lat, dest_lon: dest.lon,
+        k, vehicle_type: vehicleType,
+      }),
+    }),
+
+  downloadRoutesCsv: () => {
+    const url = `${API_URL}/api/routes/csv`;
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "routes.csv";
+    a.click();
+  },
   
   triggerIncident: (severity: string = "HIGH") =>
     fetchAPI<any>("/api/trigger-incident", {

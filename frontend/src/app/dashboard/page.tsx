@@ -6,6 +6,7 @@ import dynamic from "next/dynamic";
 import {
   TrafficCone, Navigation, Bell, MessageSquare,
   Clock, Brain, AlertTriangle, Play, Square,
+  Map as MapIcon, Route, Ambulance, ShieldCheck, Flame, Car,
 } from "lucide-react";
 import Sidebar from "@/components/Sidebar";
 import SignalPanel from "@/components/SignalPanel";
@@ -18,6 +19,7 @@ import { useWebSocket } from "@/lib/useWebSocket";
 import { useTrafficStore } from "@/lib/store";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
+import type { VehicleType } from "@/lib/types";
 
 // Mapbox must be client-side only
 const TrafficMap = dynamic(() => import("@/components/TrafficMap"), {
@@ -43,6 +45,17 @@ export default function DashboardPage() {
   const [activeTab, setActiveTab] = useState("signals");
   const incident = useTrafficStore((s) => s.incident);
   const [triggerLoading, setTriggerLoading] = useState(false);
+  const dashboardMode = useTrafficStore((s) => s.dashboardMode);
+  const setDashboardMode = useTrafficStore((s) => s.setDashboardMode);
+  const vehicleType = useTrafficStore((s) => s.vehicleType);
+  const setVehicleType = useTrafficStore((s) => s.setVehicleType);
+
+  const VEHICLE_OPTIONS: { value: VehicleType; label: string; icon: typeof Car }[] = [
+    { value: "normal", label: "Normal", icon: Car },
+    { value: "ambulance", label: "Ambulance", icon: Ambulance },
+    { value: "police", label: "Police", icon: ShieldCheck },
+    { value: "fire_brigade", label: "Fire", icon: Flame },
+  ];
 
   const handleTrigger = async () => {
     setTriggerLoading(true);
@@ -85,6 +98,58 @@ export default function DashboardPage() {
           </div>
 
           <div className="flex items-center gap-2">
+            {/* Mode Toggle */}
+            <div className="flex bg-slate-100 rounded-lg p-0.5">
+              <button
+                onClick={() => setDashboardMode("overview")}
+                className={cn(
+                  "flex items-center gap-1 px-2.5 py-1 text-xs font-medium rounded-md transition-colors",
+                  dashboardMode === "overview"
+                    ? "bg-white text-foreground shadow-sm"
+                    : "text-muted hover:text-foreground"
+                )}
+              >
+                <MapIcon className="w-3 h-3" />
+                Overview
+              </button>
+              <button
+                onClick={() => setDashboardMode("route")}
+                className={cn(
+                  "flex items-center gap-1 px-2.5 py-1 text-xs font-medium rounded-md transition-colors",
+                  dashboardMode === "route"
+                    ? "bg-white text-foreground shadow-sm"
+                    : "text-muted hover:text-foreground"
+                )}
+              >
+                <Route className="w-3 h-3" />
+                Route Planning
+              </button>
+            </div>
+
+            {/* Vehicle Selector (route mode only) */}
+            {dashboardMode === "route" && (
+              <div className="flex bg-slate-100 rounded-lg p-0.5">
+                {VEHICLE_OPTIONS.map((opt) => {
+                  const Icon = opt.icon;
+                  return (
+                    <button
+                      key={opt.value}
+                      onClick={() => setVehicleType(opt.value)}
+                      title={opt.label}
+                      className={cn(
+                        "flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-md transition-colors",
+                        vehicleType === opt.value
+                          ? "bg-white text-foreground shadow-sm"
+                          : "text-muted hover:text-foreground"
+                      )}
+                    >
+                      <Icon className="w-3 h-3" />
+                      <span className="hidden sm:inline">{opt.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
             {!incident ? (
               <button
                 onClick={handleTrigger}
