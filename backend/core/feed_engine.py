@@ -195,7 +195,8 @@ class FeedEngine:
         self._listeners: list[Callable] = []
         self._incident_segment: str | None = None
         self._incident_speed_factor: float = 0.0
-        self._simulated_hour: float = 8.5  # Start at 8:30 AM (peak)
+        now = datetime.now()
+        self._simulated_hour: float = now.hour + now.minute / 60.0
 
     def initialize(self):
         """Load or generate segment data."""
@@ -245,10 +246,9 @@ class FeedEngine:
     def _generate_tick(self) -> FeedTick:
         """Generate one tick of speed data."""
         self._tick += 1
-        # Advance simulated time by ~1 minute per tick (5 real seconds)
-        self._simulated_hour += 1.0 / 60.0
-        if self._simulated_hour >= 24.0:
-            self._simulated_hour -= 24.0
+        # Use real wall-clock time
+        now = datetime.now()
+        self._simulated_hour = now.hour + now.minute / 60.0
 
         tod_factor = _time_of_day_factor(self._simulated_hour)
         speeds = []

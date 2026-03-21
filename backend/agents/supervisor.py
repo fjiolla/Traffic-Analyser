@@ -13,11 +13,12 @@ from models.schemas import (
     AlertDrafts, DensityData, AgentOutput, TimelineEntry,
 )
 
+from core.key_manager import get_gemini_key
+
 try:
     import google.generativeai as genai
-    genai.configure(api_key=os.getenv("GOOGLE_AI_API_KEY_2", os.getenv("GOOGLE_AI_API_KEY")))
     GEMINI_AVAILABLE = True
-except (ImportError, Exception):
+except ImportError:
     GEMINI_AVAILABLE = False
 
 
@@ -115,16 +116,30 @@ async def run_supervisor(
     }
 
     final_summary = ""
+    # Derive confidence from actual agent outputs instead of hardcoding
+    signal_conf = (
+        sum(s.confidence for s in signals) / len(signals)
+        if signals else 0.5
+    )
+    routing_conf = (
+        max(0.3, 1.0 - (diversion.risk_delta_pct / -100.0 if diversion and diversion.risk_delta_pct < 0 else 0))
+        if diversion else 0.5
+    )
+    if diversion and diversion.risk_delta_pct >= 0:
+        routing_conf = min(0.95, 0.6 + diversion.risk_delta_pct / 200.0)
+    alerts_conf = 0.85 if alerts else 0.5
+    overall_conf = round((signal_conf + routing_conf + alerts_conf) / 3, 2)
     confidence_scores = {
-        "signal": 0.7,
-        "routing": 0.7,
-        "alerts": 0.8,
-        "overall": 0.7,
+        "signal": round(signal_conf, 2),
+        "routing": round(routing_conf, 2),
+        "alerts": round(alerts_conf, 2),
+        "overall": overall_conf,
     }
     cascade_risk = 0.0
 
     if GEMINI_AVAILABLE:
         try:
+            genai.configure(api_key=get_gemini_key())
             model = genai.GenerativeModel("gemini-2.0-flash")
             response = model.generate_content(
                 f"{SYSTEM_PROMPT}\n\nAGENT OUTPUTS:\n{json.dumps(agent_data, indent=2)}\n\nReturn ONLY valid JSON.",

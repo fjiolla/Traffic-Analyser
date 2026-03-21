@@ -13,11 +13,12 @@ from models.schemas import (
     ChatMessage, ChatResponse,
 )
 
+from core.key_manager import get_gemini_key
+
 try:
     import google.generativeai as genai
-    genai.configure(api_key=os.getenv("GOOGLE_AI_API_KEY_2", os.getenv("GOOGLE_AI_API_KEY")))
     GEMINI_AVAILABLE = True
-except (ImportError, Exception):
+except ImportError:
     GEMINI_AVAILABLE = False
 
 
@@ -166,6 +167,7 @@ class NarrativeAgent:
             return self._fallback_response(user_message)
 
         try:
+            genai.configure(api_key=get_gemini_key())
             model = genai.GenerativeModel("gemini-2.0-flash")
 
             prompt = f"""{SYSTEM_PROMPT}

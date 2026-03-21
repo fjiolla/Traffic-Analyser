@@ -19,12 +19,18 @@ load_dotenv(os.path.join(os.path.dirname(__file__), "..", ".env"))
 from core.feed_engine import FeedEngine
 from core.risk_scorer import compute_risk_map, get_hotspots
 from core.graph import TrafficGraph
+from pydantic import BaseModel
 from models.schemas import (
     ChatRequest, ChatResponse, Severity, IncidentDetection,
     FeedTick, TimelineEntry,
 )
 from rag.retriever import get_all_documents
 from typing import Optional
+
+
+class IncidentTriggerRequest(BaseModel):
+    severity: str = "HIGH"
+    segment_id: Optional[str] = None
 
 # Global instances
 feed_engine = FeedEngine()
@@ -292,10 +298,10 @@ async def get_twin_data():
 
 
 @app.post("/api/trigger-incident")
-async def trigger_incident(severity: str = "HIGH", segment_id: Optional[str] = None):
+async def trigger_incident(body: IncidentTriggerRequest):
     """Trigger a demo incident."""
-    sev = Severity(severity)
-    incident = await traffic_graph.trigger_incident(segment_id=segment_id, severity=sev)
+    sev = Severity(body.severity)
+    incident = await traffic_graph.trigger_incident(segment_id=body.segment_id, severity=sev)
     if not incident:
         raise HTTPException(status_code=400, detail="No segments available")
 

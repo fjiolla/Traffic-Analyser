@@ -13,8 +13,7 @@ from models.schemas import (
     SegmentSpeed, RiskEntry, IncidentDetection, DiversionRoute
 )
 from core.risk_scorer import _haversine
-
-client = Groq(api_key=os.getenv("GROQ_API_KEY"))
+from core.key_manager import get_groq_key
 
 # Brooklyn major intersections for routing endpoints
 BROOKLYN_INTERSECTIONS = [
@@ -85,7 +84,7 @@ def _compute_diversion_route(
         if seg.street_name not in seen_streets:
             route_names.append(seg.street_name)
             seen_streets.add(seg.street_name)
-        route_coords.append([seg.lat, seg.lon])
+        route_coords.append([seg.lon, seg.lat])
         total_risk += rs["risk"]
 
     # Calculate risk improvement
@@ -94,8 +93,12 @@ def _compute_diversion_route(
     avg_route_risk = total_risk / len(route_segments) if route_segments else 0.5
     risk_delta = round((original_risk - avg_route_risk) / original_risk * 100, 1) if original_risk > 0 else 0
 
-    # Estimate volume redistribution
-    diversion_volume = round(random.uniform(15, 35), 1)  # % of traffic diverted
+    # Estimate volume redistribution from flow model
+    # Blocked segment density vs diversion route capacity
+    blocked_density = sum(s.density for s in blocked_segments) / max(len(blocked_segments), 1)
+    route_avg_density = sum(rs["segment"].density for rs in route_segments) / len(route_segments)
+    capacity_ratio = blocked_density / max(route_avg_density + blocked_density, 1)
+    diversion_volume = round(min(50, max(10, capacity_ratio * 100)), 1)
 
     # Time comparison
     original_speed = speed_by_id.get(incident.segment_id)
@@ -159,6 +162,7 @@ Blocked streets near incident: {', '.join(route_data['stats']['blocked_streets']
 Narrate this diversion for an officer. Return ONLY valid JSON."""
 
     try:
+        client = Groq(api_key=get_groq_key())
         response = client.chat.completions.create(
             model="llama-3.3-70b-versatile",
             messages=[

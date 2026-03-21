@@ -9,8 +9,7 @@ import json
 import os
 from groq import Groq
 from models.schemas import IncidentDetection, DiversionRoute, AlertDrafts
-
-client = Groq(api_key=os.getenv("GROQ_API_KEY"))
+from core.key_manager import get_groq_key
 
 SYSTEM_PROMPT = """You are a public information officer for Brooklyn, New York traffic management.
 Generate THREE types of alerts for a traffic incident:
@@ -55,6 +54,7 @@ Estimated duration: {incident.duration_estimate_min} minutes
 Generate all three alert formats. Return ONLY valid JSON."""
 
     try:
+        client = Groq(api_key=get_groq_key())
         response = client.chat.completions.create(
             model="llama-3.3-70b-versatile",
             messages=[

@@ -10,11 +10,12 @@ import os
 import base64
 from models.schemas import SegmentSpeed, DensityData
 
+from core.key_manager import get_gemini_key
+
 try:
     import google.generativeai as genai
-    genai.configure(api_key=os.getenv("GOOGLE_AI_API_KEY_2", os.getenv("GOOGLE_AI_API_KEY")))
     GEMINI_AVAILABLE = True
-except (ImportError, Exception):
+except ImportError:
     GEMINI_AVAILABLE = False
 
 
@@ -63,6 +64,7 @@ async def analyze_camera_frame(image_base64: str) -> DensityData:
         )
 
     try:
+        genai.configure(api_key=get_gemini_key())
         model = genai.GenerativeModel("gemini-2.0-flash")
 
         prompt = """Analyze this traffic camera image. Provide:

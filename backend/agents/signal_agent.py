@@ -12,8 +12,7 @@ from models.schemas import (
     SegmentSpeed, RiskEntry, IncidentDetection, SignalRecommendation
 )
 from core.risk_scorer import _haversine
-
-client = Groq(api_key=os.getenv("GROQ_API_KEY"))
+from core.key_manager import get_groq_key
 
 SYSTEM_PROMPT = """You are a traffic signal timing expert for Brooklyn, New York.
 You receive real-time traffic data and must recommend signal phase changes for intersections
@@ -94,6 +93,7 @@ Focus on pre-emptive queue prevention — adjust signals BEFORE the queue reache
 Return ONLY a valid JSON array."""
 
     try:
+        client = Groq(api_key=get_groq_key())
         response = client.chat.completions.create(
             model="llama-3.3-70b-versatile",
             messages=[
