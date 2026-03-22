@@ -198,18 +198,35 @@ def find_routes(
     if orig_node == dest_node:
         return []
 
-    # Compute edge weights
+    # Compute base edge weights
     for u, v, data in G.edges(data=True):
         u_data = G.nodes[u]
         v_data = G.nodes[v]
         w = _compute_edge_weight(u_data, v_data, data, feed_lookup, risk_lookup, vehicle_type, weather_penalty_fn)
         data["_weight"] = w
+        data["_base_weight"] = w  # preserve original for penalty resets
 
-    # Find k-shortest paths using Yen's algorithm via networkx
-    try:
-        paths = list(_k_shortest_paths(G, orig_node, dest_node, k, weight="_weight"))
-    except (nx.NetworkXNoPath, nx.NodeNotFound):
-        return []
+    # Find k diverse paths using penalty-based approach:
+    # After finding each shortest path, penalize its edges heavily so the next
+    # shortest path is forced onto different roads.
+    paths = []
+    DIVERSITY_PENALTY = 5.0  # multiplier applied to shared edges
+    for _ in range(k):
+        try:
+            path = nx.shortest_path(G, orig_node, dest_node, weight="_weight")
+        except (nx.NetworkXNoPath, nx.NodeNotFound):
+            break
+        paths.append(path)
+        # Penalize edges used by this path so future paths avoid them
+        for j in range(len(path) - 1):
+            u, v = path[j], path[j + 1]
+            if G.has_edge(u, v):
+                G[u][v]["_weight"] *= DIVERSITY_PENALTY
+
+    # Restore original weights so cached graph isn't corrupted
+    for u, v, data in G.edges(data=True):
+        if "_base_weight" in data:
+            data["_weight"] = data["_base_weight"]
 
     if not paths:
         return []
@@ -217,7 +234,7 @@ def find_routes(
     # Build route responses
     routes = []
     colors = ["#10B981", "#F59E0B", "#EF4444"]  # green, yellow, red
-    ranks = ["optimal", "moderate", "risky"]
+    ranks = ["optimal", "moderate", "high"]
 
     for idx, path in enumerate(paths):
         coords = []

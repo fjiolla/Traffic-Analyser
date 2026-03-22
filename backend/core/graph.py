@@ -60,7 +60,7 @@ class TrafficGraph:
     def __init__(self, feed_engine: FeedEngine, on_event: Optional[Callable[[dict], Awaitable[None]]] = None):
         self.feed = feed_engine
         self.detector = AnomalyDetector()
-        self.narrative = NarrativeAgent()
+        self.narrative = NarrativeAgent(feed_engine=feed_engine)
         self._on_event = on_event
         self._state: TrafficState = {
             "snapshot": [],

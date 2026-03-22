@@ -1,8 +1,8 @@
 /* ── Chat Interface — TAO conversational AI ── */
 "use client";
 
-import { useState, useRef, useEffect } from "react";
-import { MessageSquare, Send, Bot, User, Wrench, Loader2, FileText, ChevronDown, ChevronRight } from "lucide-react";
+import { useState, useRef, useEffect, useCallback } from "react";
+import { MessageSquare, Send, Bot, User, Wrench, Loader2, FileText, ChevronDown, ChevronRight, Mic, MicOff, Volume2 } from "lucide-react";
 import { useTrafficStore } from "@/lib/store";
 import { api } from "@/lib/api";
 import { cn, formatTime } from "@/lib/utils";
@@ -42,7 +42,18 @@ export default function ChatInterface() {
   const addMessage = useTrafficStore((s) => s.addMessage);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
+  const [recording, setRecording] = useState(false);
+  const [ttsEnabled, setTtsEnabled] = useState(true);
+  const [voiceStatus, setVoiceStatus] = useState("");
   const scrollRef = useRef<HTMLDivElement>(null);
+  const mediaRecorder = useRef<MediaRecorder | null>(null);
+  const audioChunks = useRef<Blob[]>([]);
+  const silenceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const maxTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const audioCtxRef = useRef<AudioContext | null>(null);
+  const analyserRef = useRef<AnalyserNode | null>(null);
+  const silenceCheckRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const streamRef = useRef<MediaStream | null>(null);
 
   useEffect(() => {
     scrollRef.current?.scrollTo({
@@ -50,6 +61,187 @@ export default function ChatInterface() {
       behavior: "smooth",
     });
   }, [messages]);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (silenceTimer.current) clearTimeout(silenceTimer.current);
+      if (maxTimer.current) clearTimeout(maxTimer.current);
+      if (silenceCheckRef.current) clearInterval(silenceCheckRef.current);
+      if (audioCtxRef.current) audioCtxRef.current.close().catch(() => {});
+    };
+  }, []);
+
+  const speakText = useCallback((text: string, audioBase64?: string) => {
+    if (!ttsEnabled || typeof window === "undefined") return;
+    window.speechSynthesis.cancel();
+
+    // Prefer gTTS audio if available
+    if (audioBase64) {
+      try {
+        const audioBytes = atob(audioBase64);
+        const arr = new Uint8Array(audioBytes.length);
+        for (let i = 0; i < audioBytes.length; i++) arr[i] = audioBytes.charCodeAt(i);
+        const blob = new Blob([arr], { type: "audio/mpeg" });
+        const url = URL.createObjectURL(blob);
+        const audio = new Audio(url);
+        audio.onended = () => URL.revokeObjectURL(url);
+        audio.play().catch(() => {});
+        return;
+      } catch { /* fall through to browser TTS */ }
+    }
+
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.rate = 1.05;
+    utterance.pitch = 1;
+    window.speechSynthesis.speak(utterance);
+  }, [ttsEnabled]);
+
+  const addBotResponse = useCallback((res: any, isVoice: boolean = false) => {
+    const botMsg: ChatMessage = {
+      role: "assistant",
+      content: res.response,
+      timestamp: new Date().toISOString(),
+      tool_calls: res.tool_calls || [],
+      thinking: res.thinking || "",
+      rag_sources: res.rag_sources || [],
+    };
+    addMessage(botMsg);
+    if (isVoice) speakText(res.response, res.audio_base64);
+  }, [addMessage, speakText]);
+
+  // ── Voice recording with silence detection ──
+  const SILENCE_THRESHOLD = 15;       // RMS level below which = silence (0-128 range)
+  const SILENCE_DURATION_MS = 1500;   // Stop after 1.5s of silence
+  const MAX_RECORDING_MS = 15000;     // Hard cap at 15 seconds
+
+  const cleanupRecording = useCallback(() => {
+    if (silenceTimer.current) { clearTimeout(silenceTimer.current); silenceTimer.current = null; }
+    if (maxTimer.current) { clearTimeout(maxTimer.current); maxTimer.current = null; }
+    if (silenceCheckRef.current) { clearInterval(silenceCheckRef.current); silenceCheckRef.current = null; }
+    if (audioCtxRef.current) { audioCtxRef.current.close().catch(() => {}); audioCtxRef.current = null; }
+    analyserRef.current = null;
+    setVoiceStatus("");
+  }, []);
+
+  const stopRecording = useCallback(() => {
+    cleanupRecording();
+    if (mediaRecorder.current && mediaRecorder.current.state !== "inactive") {
+      mediaRecorder.current.stop();
+    }
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach((t) => t.stop());
+      streamRef.current = null;
+    }
+    setRecording(false);
+  }, [cleanupRecording]);
+
+  const startRecording = useCallback(async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      streamRef.current = stream;
+
+      // Choose best supported mime type
+      const mimeType = MediaRecorder.isTypeSupported("audio/webm;codecs=opus")
+        ? "audio/webm;codecs=opus"
+        : "audio/webm";
+      const recorder = new MediaRecorder(stream, { mimeType });
+      audioChunks.current = [];
+
+      recorder.ondataavailable = (e) => {
+        if (e.data.size > 0) audioChunks.current.push(e.data);
+      };
+
+      recorder.onstop = async () => {
+        stream.getTracks().forEach((t) => t.stop());
+        streamRef.current = null;
+        const blob = new Blob(audioChunks.current, { type: mimeType });
+        if (blob.size < 100) return;
+
+        setVoiceStatus("Transcribing…");
+        setLoading(true);
+        try {
+          const res = await api.sendVoice(blob);
+          if (res.transcript) {
+            addMessage({
+              role: "user",
+              content: `🎤 ${res.transcript}`,
+              timestamp: new Date().toISOString(),
+              tool_calls: [],
+              thinking: "",
+            });
+          }
+          addBotResponse(res, true);
+        } catch {
+          addMessage({
+            role: "assistant",
+            content: "Voice processing failed. Please try again.",
+            timestamp: new Date().toISOString(),
+            tool_calls: [],
+            thinking: "",
+          });
+        } finally {
+          setLoading(false);
+          setVoiceStatus("");
+        }
+      };
+
+      mediaRecorder.current = recorder;
+      // Collect data every 250ms for reliability
+      recorder.start(250);
+      setRecording(true);
+      setVoiceStatus("Listening…");
+
+      // ── Silence detection via Web Audio API ──
+      const audioCtx = new AudioContext();
+      audioCtxRef.current = audioCtx;
+      const source = audioCtx.createMediaStreamSource(stream);
+      const analyser = audioCtx.createAnalyser();
+      analyser.fftSize = 512;
+      source.connect(analyser);
+      analyserRef.current = analyser;
+
+      const dataArray = new Uint8Array(analyser.fftSize);
+      let speechDetected = false;
+
+      silenceCheckRef.current = setInterval(() => {
+        if (!analyserRef.current) return;
+        analyserRef.current.getByteTimeDomainData(dataArray);
+        // Compute RMS
+        let sum = 0;
+        for (let i = 0; i < dataArray.length; i++) {
+          const val = dataArray[i] - 128;
+          sum += val * val;
+        }
+        const rms = Math.sqrt(sum / dataArray.length);
+
+        if (rms > SILENCE_THRESHOLD) {
+          // Speech detected — cancel any pending silence stop
+          speechDetected = true;
+          setVoiceStatus("Listening… 🔴");
+          if (silenceTimer.current) {
+            clearTimeout(silenceTimer.current);
+            silenceTimer.current = null;
+          }
+        } else if (speechDetected && !silenceTimer.current) {
+          // Silence after speech — start countdown
+          setVoiceStatus("Finishing…");
+          silenceTimer.current = setTimeout(() => {
+            stopRecording();
+          }, SILENCE_DURATION_MS);
+        }
+      }, 100);
+
+      // Hard maximum recording cap
+      maxTimer.current = setTimeout(() => {
+        stopRecording();
+      }, MAX_RECORDING_MS);
+
+    } catch {
+      setVoiceStatus("");
+      // Mic permission denied or unavailable
+    }
+  }, [addMessage, addBotResponse, stopRecording, cleanupRecording]);
 
   const handleSend = async () => {
     const trimmed = input.trim();
@@ -68,15 +260,7 @@ export default function ChatInterface() {
 
     try {
       const res = await api.sendChat(trimmed);
-      const botMsg: ChatMessage = {
-        role: "assistant",
-        content: res.response,
-        timestamp: new Date().toISOString(),
-        tool_calls: res.tool_calls || [],
-        thinking: res.thinking || "",
-        rag_sources: res.rag_sources || [],
-      };
-      addMessage(botMsg);
+      addBotResponse(res);
     } catch {
       addMessage({
         role: "assistant",
@@ -199,23 +383,53 @@ export default function ChatInterface() {
       </div>
 
       {/* Input */}
-      <div className="flex gap-2 border-t border-border pt-3">
-        <input
-          type="text"
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && handleSend()}
-          placeholder="Ask about traffic conditions…"
-          className="flex-1 text-xs border border-border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
-          disabled={loading}
-        />
-        <button
-          onClick={handleSend}
-          disabled={!input.trim() || loading}
-          className="px-3 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-        >
-          <Send className="w-3.5 h-3.5" />
-        </button>
+      <div className="flex flex-col gap-2 border-t border-border pt-3">
+        <div className="flex gap-2">
+          <input
+            type="text"
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && handleSend()}
+            placeholder={recording ? `🎤 ${voiceStatus}` : loading ? "Processing…" : "Ask about traffic conditions…"}
+            className="flex-1 text-xs border border-border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
+            disabled={loading || recording}
+          />
+          <button
+            onClick={recording ? stopRecording : startRecording}
+            disabled={loading}
+            className={cn(
+              "px-3 py-2 rounded-lg transition-colors",
+              recording
+                ? "bg-red-500 text-white animate-pulse"
+                : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+            )}
+            title={recording ? "Stop recording" : "Voice input"}
+          >
+            {recording ? <MicOff className="w-3.5 h-3.5" /> : <Mic className="w-3.5 h-3.5" />}
+          </button>
+          <button
+            onClick={handleSend}
+            disabled={!input.trim() || loading}
+            className="px-3 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          >
+            <Send className="w-3.5 h-3.5" />
+          </button>
+        </div>
+        <div className="flex items-center justify-end">
+          <button
+            onClick={() => {
+              setTtsEnabled(!ttsEnabled);
+              if (ttsEnabled) window.speechSynthesis.cancel();
+            }}
+            className={cn(
+              "flex items-center gap-1 text-[10px] rounded px-1.5 py-0.5 transition-colors",
+              ttsEnabled ? "text-primary bg-primary/10" : "text-muted bg-slate-50"
+            )}
+          >
+            <Volume2 className="w-3 h-3" />
+            <span>Voice {ttsEnabled ? "On" : "Off"}</span>
+          </button>
+        </div>
       </div>
     </div>
   );

@@ -1,0 +1,70 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" fill="none">
+  <!-- Background with dark gradient -->
+  <rect width="120" height="120" rx="24" fill="url(#bg)"/>
+
+  <!-- Brain outline (left hemisphere) -->
+  <path d="M60 30 C45 30, 30 40, 30 55 C30 65, 35 72, 42 76 C38 80, 38 86, 42 90 C46 94, 54 94, 58 90 L60 88" stroke="url(#g1)" stroke-width="3" fill="none" stroke-linecap="round"/>
+  <!-- Brain outline (right hemisphere) -->
+  <path d="M60 30 C75 30, 90 40, 90 55 C90 65, 85 72, 78 76 C82 80, 82 86, 78 90 C74 94, 66 94, 62 90 L60 88" stroke="url(#g2)" stroke-width="3" fill="none" stroke-linecap="round"/>
+
+  <!-- Brain fold lines -->
+  <path d="M42 50 C48 48, 54 52, 60 50" stroke="#34d399" stroke-width="1.8" fill="none" opacity="0.7" stroke-linecap="round"/>
+  <path d="M60 50 C66 48, 72 52, 78 50" stroke="#60a5fa" stroke-width="1.8" fill="none" opacity="0.7" stroke-linecap="round"/>
+  <path d="M38 62 C46 60, 52 64, 60 62" stroke="#34d399" stroke-width="1.8" fill="none" opacity="0.6" stroke-linecap="round"/>
+  <path d="M60 62 C68 60, 74 64, 82 62" stroke="#60a5fa" stroke-width="1.8" fill="none" opacity="0.6" stroke-linecap="round"/>
+
+  <!-- Neural network nodes -->
+  <circle cx="44" cy="44" r="4" fill="#34d399"/>
+  <circle cx="52" cy="56" r="3.5" fill="#6ee7b7"/>
+  <circle cx="46" cy="70" r="3.5" fill="#34d399"/>
+  <circle cx="60" cy="42" r="4.5" fill="#a78bfa"/>
+  <circle cx="60" cy="60" r="5.5" fill="#c4b5fd" filter="url(#glow)"/>
+  <circle cx="60" cy="76" r="3.5" fill="#a78bfa"/>
+  <circle cx="76" cy="44" r="4" fill="#60a5fa"/>
+  <circle cx="68" cy="56" r="3.5" fill="#93c5fd"/>
+  <circle cx="74" cy="70" r="3.5" fill="#60a5fa"/>
+
+  <!-- Neural connections -->
+  <line x1="44" y1="44" x2="60" y2="42" stroke="#34d399" stroke-width="1.5" opacity="0.8"/>
+  <line x1="44" y1="44" x2="52" y2="56" stroke="#34d399" stroke-width="1.5" opacity="0.7"/>
+  <line x1="52" y1="56" x2="60" y2="60" stroke="#6ee7b7" stroke-width="1.5" opacity="0.8"/>
+  <line x1="46" y1="70" x2="60" y2="60" stroke="#34d399" stroke-width="1.5" opacity="0.7"/>
+  <line x1="46" y1="70" x2="60" y2="76" stroke="#34d399" stroke-width="1.5" opacity="0.7"/>
+  <line x1="60" y1="42" x2="76" y2="44" stroke="#60a5fa" stroke-width="1.5" opacity="0.8"/>
+  <line x1="76" y1="44" x2="68" y2="56" stroke="#60a5fa" stroke-width="1.5" opacity="0.7"/>
+  <line x1="68" y1="56" x2="60" y2="60" stroke="#93c5fd" stroke-width="1.5" opacity="0.8"/>
+  <line x1="74" y1="70" x2="60" y2="60" stroke="#60a5fa" stroke-width="1.5" opacity="0.7"/>
+  <line x1="74" y1="70" x2="60" y2="76" stroke="#60a5fa" stroke-width="1.5" opacity="0.7"/>
+  <line x1="60" y1="42" x2="60" y2="60" stroke="#a78bfa" stroke-width="1.8" opacity="0.6"/>
+  <line x1="60" y1="60" x2="60" y2="76" stroke="#a78bfa" stroke-width="1.8" opacity="0.6"/>
+  <line x1="52" y1="56" x2="68" y2="56" stroke="#a78bfa" stroke-width="1.5" opacity="0.5"/>
+
+  <!-- Center glow -->
+  <circle cx="60" cy="60" r="14" fill="#a78bfa" opacity="0.12" filter="url(#glow)"/>
+
+  <!-- Pulse rings -->
+  <circle cx="60" cy="60" r="20" stroke="#a78bfa" stroke-width="0.8" fill="none" opacity="0.2"/>
+  <circle cx="60" cy="60" r="30" stroke="#a78bfa" stroke-width="0.6" fill="none" opacity="0.12"/>
+
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="120" y2="120">
+      <stop offset="0%" stop-color="#0f172a"/>
+      <stop offset="100%" stop-color="#1e1b4b"/>
+    </linearGradient>
+    <linearGradient id="g1" x1="30" y1="30" x2="60" y2="90">
+      <stop offset="0%" stop-color="#34d399"/>
+      <stop offset="100%" stop-color="#6ee7b7"/>
+    </linearGradient>
+    <linearGradient id="g2" x1="60" y1="30" x2="90" y2="90">
+      <stop offset="0%" stop-color="#60a5fa"/>
+      <stop offset="100%" stop-color="#93c5fd"/>
+    </linearGradient>
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="3" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+</svg>

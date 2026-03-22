@@ -65,7 +65,7 @@ async def analyze_camera_frame(image_base64: str) -> DensityData:
 
     try:
         genai.configure(api_key=get_gemini_key())
-        model = genai.GenerativeModel("gemini-2.0-flash")
+        model = genai.GenerativeModel("gemini-2.5-flash")
 
         prompt = """Analyze this traffic camera image. Provide:
 1. Estimated number of vehicles visible

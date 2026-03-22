@@ -57,7 +57,8 @@ export default function TrafficMap() {
     return () => clearInterval(interval);
   }, [setPredictedHotspots]);
 
-  // Auto-compute routes when both points are set
+  // Auto-compute routes when both points are set, or when incident/traffic changes
+  const incidentId = incident?.street_name ?? null;
   useEffect(() => {
     if (!routeOrigin || !routeDestination || dashboardMode !== "route") return;
     const computeRoutes = async () => {
@@ -77,7 +78,10 @@ export default function TrafficMap() {
       setRouteLoading(false);
     };
     computeRoutes();
-  }, [routeOrigin, routeDestination, vehicleType, dashboardMode, setCandidateRoutes, setRouteLoading, setRouteWeatherCondition]);
+    // Refresh routes every 30s for real-time congestion updates
+    const interval = setInterval(computeRoutes, 30_000);
+    return () => clearInterval(interval);
+  }, [routeOrigin, routeDestination, vehicleType, dashboardMode, incidentId, setCandidateRoutes, setRouteLoading, setRouteWeatherCondition]);
 
   // Geocode search handlers
   const handleOriginSearch = useCallback((q: string) => {
@@ -144,6 +148,89 @@ export default function TrafficMap() {
       },
     })),
   }), [segments]);
+
+  // Road segment lines GeoJSON — group by street, connect into polylines for Google-Maps-style traffic coloring
+  const roadLinesGeoJSON = useMemo(() => {
+    // Group segments by street name
+    const byStreet: Record<string, SegmentSpeed[]> = {};
+    for (const seg of segments) {
+      const key = seg.street_name;
+      if (!byStreet[key]) byStreet[key] = [];
+      byStreet[key].push(seg);
+    }
+
+    const features: any[] = [];
+    for (const [, segs] of Object.entries(byStreet)) {
+      if (segs.length === 0) continue;
+
+      // Sort by lat then lon for consistent polyline direction
+      const sorted = [...segs].sort((a, b) => a.lat !== b.lat ? a.lat - b.lat : a.lon - b.lon);
+
+      // Build connected polyline coordinates and compute average color
+      const coords = sorted.map(s => [s.lon, s.lat]);
+      let totalRatio = 0;
+      for (const s of sorted) {
+        totalRatio += s.free_flow_speed > 0 ? s.speed / s.free_flow_speed : 0.5;
+      }
+      const avgRatio = totalRatio / sorted.length;
+
+      // If segments are far apart (>500m), split into sub-groups to avoid cross-map lines
+      const groups: SegmentSpeed[][] = [[]];
+      for (let i = 0; i < sorted.length; i++) {
+        const cur = sorted[i];
+        const lastGroup = groups[groups.length - 1];
+        if (lastGroup.length === 0) {
+          lastGroup.push(cur);
+        } else {
+          const prev = lastGroup[lastGroup.length - 1];
+          const dist = Math.sqrt((cur.lat - prev.lat) ** 2 + (cur.lon - prev.lon) ** 2);
+          if (dist < 0.005) { // ~500m threshold
+            lastGroup.push(cur);
+          } else {
+            groups.push([cur]);
+          }
+        }
+      }
+
+      for (const group of groups) {
+        if (group.length < 1) continue;
+
+        // Extend each point with bearing to create road-like segments
+        const DEG_TO_RAD = Math.PI / 180;
+        const EXT = 0.0008; // extend ~90m in bearing direction at each end
+
+        let lineCoords: number[][] = [];
+        if (group.length === 1) {
+          // Single point — use bearing to create segment
+          const s = group[0];
+          const b = (s.bearing ?? 0) * DEG_TO_RAD;
+          const dx = Math.sin(b) * EXT;
+          const dy = Math.cos(b) * EXT;
+          lineCoords = [[s.lon - dx, s.lat - dy], [s.lon + dx, s.lat + dy]];
+        } else {
+          lineCoords = group.map(s => [s.lon, s.lat]);
+        }
+
+        // Color per-segment group
+        let grpRatio = 0;
+        for (const s of group) {
+          grpRatio += s.free_flow_speed > 0 ? s.speed / s.free_flow_speed : 0.5;
+        }
+        grpRatio /= group.length;
+
+        features.push({
+          type: "Feature" as const,
+          geometry: { type: "LineString" as const, coordinates: lineCoords },
+          properties: {
+            color: speedToColor(grpRatio * 30, 30), // pass ratio through speedToColor
+            speed: Math.round(grpRatio * 100),
+          },
+        });
+      }
+    }
+
+    return { type: "FeatureCollection" as const, features };
+  }, [segments]);
 
   // Risk heatmap GeoJSON
   const riskGeoJSON = useMemo(() => ({
@@ -229,6 +316,22 @@ export default function TrafficMap() {
           </Source>
         )}
 
+        {/* Road segment lines colored by speed (overview mode) */}
+        {!isRouteMode && (
+          <Source id="road-lines" type="geojson" data={roadLinesGeoJSON}>
+            <Layer
+              id="road-line-layer"
+              type="line"
+              paint={{
+                "line-color": ["get", "color"],
+                "line-width": 6,
+                "line-opacity": 0.9,
+              }}
+              layout={{ "line-cap": "round", "line-join": "round" }}
+            />
+          </Source>
+        )}
+
         {/* Speed points (overview mode) */}
         {!isRouteMode && (
           <Source id="segments" type="geojson" data={segmentGeoJSON}>
@@ -236,9 +339,9 @@ export default function TrafficMap() {
               id="segment-circles"
               type="circle"
               paint={{
-                "circle-radius": 6,
+                "circle-radius": 4,
                 "circle-color": ["get", "color"],
-                "circle-stroke-width": 1.5,
+                "circle-stroke-width": 1,
                 "circle-stroke-color": "#ffffff",
                 "circle-opacity": 0.9,
               }}
@@ -431,7 +534,7 @@ export default function TrafficMap() {
       {/* Map Legend */}
       <div className="absolute bottom-4 left-4 glass-card rounded-lg p-3 text-xs">
         <div className="font-semibold mb-1.5 text-slate-700">
-          {isRouteMode ? "Route Legend" : "Speed Legend"}
+          {isRouteMode ? "Route Legend" : "Traffic Conditions"}
         </div>
         {isRouteMode ? (
           <>
@@ -445,22 +548,22 @@ export default function TrafficMap() {
             </div>
             <div className="flex items-center gap-1.5">
               <div className="w-6 h-0.5 bg-red-500 rounded" />
-              <span className="text-slate-600">Risky</span>
+              <span className="text-slate-600">High</span>
             </div>
           </>
         ) : (
           <>
             <div className="flex items-center gap-1.5 mb-1">
-              <div className="w-3 h-3 rounded-full bg-emerald-500" />
-              <span className="text-slate-600">&gt; 70% Free-flow</span>
+              <div className="w-5 h-1 rounded bg-emerald-500" />
+              <span className="text-slate-600">Clear — Good to go</span>
             </div>
             <div className="flex items-center gap-1.5 mb-1">
-              <div className="w-3 h-3 rounded-full bg-amber-500" />
-              <span className="text-slate-600">40–70%</span>
+              <div className="w-5 h-1 rounded bg-amber-500" />
+              <span className="text-slate-600">Slow — Possible congestion</span>
             </div>
             <div className="flex items-center gap-1.5 mb-1">
-              <div className="w-3 h-3 rounded-full bg-red-500" />
-              <span className="text-slate-600">&lt; 40% (Congested)</span>
+              <div className="w-5 h-1 rounded bg-red-500" />
+              <span className="text-slate-600">Congested — Avoid</span>
             </div>
           </>
         )}

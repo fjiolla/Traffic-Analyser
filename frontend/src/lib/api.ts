@@ -69,6 +69,17 @@ export const api = {
       method: "POST",
       body: JSON.stringify({ enabled }),
     }),
+
+  sendVoice: async (audioBlob: Blob): Promise<any> => {
+    const form = new FormData();
+    form.append("audio", audioBlob, "recording.webm");
+    const res = await fetch(`${API_URL}/api/chat/voice`, {
+      method: "POST",
+      body: form,
+    });
+    if (!res.ok) throw new Error(`API error: ${res.status}`);
+    return res.json();
+  },
 };
 
 export { API_URL };

@@ -140,7 +140,7 @@ async def run_supervisor(
     if GEMINI_AVAILABLE:
         try:
             genai.configure(api_key=get_gemini_key())
-            model = genai.GenerativeModel("gemini-2.0-flash")
+            model = genai.GenerativeModel("gemini-2.5-flash")
             response = model.generate_content(
                 f"{SYSTEM_PROMPT}\n\nAGENT OUTPUTS:\n{json.dumps(agent_data, indent=2)}\n\nReturn ONLY valid JSON.",
                 generation_config=genai.GenerationConfig(

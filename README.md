@@ -1,8 +1,8 @@
-# TrafficMind — AI Co-Pilot for Traffic Incident Command (v1.0.0)
+# TrafficMind — AI Co-Pilot for Traffic Incident Command (v2.9.0)
 
 A real-time, LLM-powered multi-agent system for traffic incident detection, response coordination, and public alert management — built for Brooklyn, NYC.
 
-![TrafficMind](https://img.shields.io/badge/TrafficMind-v1.0.0-2563eb?style=for-the-badge)
+![TrafficMind](https://img.shields.io/badge/TrafficMind-v2.9.0-2563eb?style=for-the-badge)
 ![Next.js](https://img.shields.io/badge/Next.js-16-000?style=flat-square&logo=next.js)
 ![FastAPI](https://img.shields.io/badge/FastAPI-0.115-009688?style=flat-square&logo=fastapi)
 ![LangGraph](https://img.shields.io/badge/LangGraph-Multi--Agent-7C3AED?style=flat-square)
@@ -53,15 +53,24 @@ Refer to it for the latest changes! 😉
 
 | Feature | Description |
 |---------|-------------|
-| **Real-Time Feed** | 250 Brooklyn road segments with simulated speed data (OSMnx road graph) |
+| **Real-Time Feed** | 250 Brooklyn road segments with live wall-clock speed data (OSMnx road graph) |
 | **Multi-Agent Pipeline** | 6 LLM agents run in parallel fan-out → supervisor fan-in pattern |
+| **API Key Rotation** | Comma-separated key pools for Groq + Gemini; automatic failover on 429 rate limits |
 | **Signal Re-Timing** | Upstream/downstream intersection phase adjustments with sensor citations |
-| **Smart Diversion** | Alternative route computation with risk delta and volume redistribution |
+| **Smart Diversion** | Alternative route computation with flow-based volume redistribution |
 | **Triple-Format Alerts** | VMS (≤20 chars/line), 15s radio script, 280-char tweet — format-constrained |
+| **Social Media Auto-Post** | Tweet auto-posts to Twitter/X via tweepy; toggle via sidebar |
 | **Vehicle Density** | Fundamental flow equation + optional Gemini vision analysis |
 | **RAG-Grounded SOPs** | 12 Standard Operating Procedures retrieved via TF-IDF for recommendation validation |
+| **RAG-Powered Chat** | Chat agent cites SOP sources; RAG source badges shown in UI |
+| **Voice Chat** | Groq Whisper STT + browser TTS — speak questions, hear answers |
+| **Weather-Aware Routing** | Weather.gov real conditions; flood/ice/snow road penalties applied to route scoring |
+| **Priority Routing** | Emergency vehicle mode (ambulance/police/fire) with edge-weight multipliers + signal preemptions |
+| **Route Intelligence** | 3 candidate routes — green (optimal), yellow (moderate), red (risky) — following actual roads |
+| **Geocoding Search** | Google Maps-style searchbox with Mapbox autocomplete, Brooklyn-scoped |
+| **DBSCAN Hotspot Prediction** | Accident cluster prediction via scikit-learn DBSCAN on OSMnx graph |
 | **Digital Twin** | Side-by-side before/after comparison map showing intervention impact |
-| **Chat Interface** | Natural language Q&A with full incident context via narrative agent |
+| **Dynamic Confidence** | Supervisor confidence scores derived from live agent data, not hardcoded defaults |
 | **Sub-2s Response** | Groq Llama 3.3 70B for inference-heavy agents — measured 0.34s E2E |
 
 ## Tech Stack
@@ -72,11 +81,19 @@ Refer to it for the latest changes! 😉
 | Backend | FastAPI, Python 3.9+, Pydantic v2 |
 | LLM (Fast) | Groq — Llama 3.3 70B Versatile |
 | LLM (Deep) | Google Gemini 2.0 Flash |
+| STT | Groq Whisper (whisper-large-v3-turbo) |
+| TTS | Browser Web Speech API |
 | Maps | Mapbox GL JS via react-map-gl v8 |
+| Geocoding | Mapbox Search API (backend-proxied) |
 | Road Data | OSMnx (Brooklyn road graph, 250 segments) |
+| Routing | NetworkX shortest_simple_paths on DiGraph |
+| Weather | Weather.gov API (free, no key required) |
+| Hotspots | scikit-learn DBSCAN on OSMnx accident data |
+| Social | tweepy (Twitter/X OAuth 1.0a) |
 | RAG | TF-IDF vectorizer on 12 SOP documents |
 | Real-Time | WebSocket (5s tick interval) |
 | State | Zustand (client), in-memory (server) |
+| Key Failover | Thread-safe key rotation pool (Groq + Gemini) |
 
 ## Quick Start
 
@@ -94,10 +111,27 @@ cd trafficmind
 
 # Create .env in project root
 cat > .env << 'EOF'
+# Primary keys
 GROQ_API_KEY=your_groq_key
 GOOGLE_AI_API_KEY=your_google_ai_key
 GOOGLE_AI_API_KEY_2=your_google_ai_key_2
+
+# Key rotation (comma-separated — enables failover on rate limits)
+GROQ_API_KEYS=key1,key2,key3,key4,key5,key6,key7
+GOOGLE_AI_API_KEYS=gemini1,gemini2,gemini3,gemini4
+
+# Mapbox
 NEXT_PUBLIC_MAPBOX_TOKEN=your_mapbox_token
+MAPBOX_TOKEN=your_mapbox_token
+
+# Twitter/X (optional — gracefully skipped if not set)
+TWITTER_API_KEY=optional
+TWITTER_API_SECRET=optional
+TWITTER_ACCESS_TOKEN=optional
+TWITTER_ACCESS_SECRET=optional
+
+# NYC Open Data (optional — for real accident/speed data)
+NYC_OPEN_DATA_TOKEN=optional
 NEXT_PUBLIC_API_URL=http://localhost:8000
 EOF
 ```
@@ -128,18 +162,23 @@ Open [http://localhost:3000](http://localhost:3000) — the landing page. Naviga
 
 ## Demo Flow
 
-1. **Open Dashboard** → `/dashboard` — see the Brooklyn map with 250 real-time speed segments
+1. **Open Dashboard** → `/dashboard` — see the Brooklyn map with 250 real-time speed segments, weather in sidebar, hotspot prediction circles
 2. **Click "Simulate Incident"** → triggers a HIGH severity incident on Flatbush Avenue
 3. **Watch the agent pipeline**:
    - Signal Agent: 4 intersection re-timing recommendations
-   - Routing Agent: Alternative diversion route with risk reduction
-   - Alert Agent: VMS signs, radio script, social media post
+   - Routing Agent: Alternative diversion route with flow-based volume redistribution
+   - Alert Agent: VMS signs, radio script, social media post (auto-tweeted if configured)
    - Density Agent: Vehicle density estimation
-   - Supervisor: Cross-agent coherence check, cascade risk assessment
+   - Supervisor: Dynamic confidence scoring, cascade risk assessment, SOP compliance
 4. **Explore tabs**: Signals, Routing, Alerts, Chat, Timeline, Summary
-5. **Chat** → ask "What happened?" or "Should I extend the diversion?"
-6. **Digital Twin** → `/twin` — side-by-side before/after impact comparison
-7. **Click "Resolve"** → clears incident, returns to normal monitoring
+5. **Chat** → ask "What's the emergency corridor protocol?" — cites SOP source with badge
+6. **Voice Chat** → click mic, speak your question → Whisper transcribes → TTS reads response
+7. **Toggle "Route Planning" mode** → search boxes appear
+   - Select vehicle type: Normal / Ambulance / Police / Fire Brigade
+   - Search origin + destination → 3 color-coded routes render (green/yellow/red)
+   - Panel shows time, distance, density, risk + signal preemptions for emergency vehicles
+8. **Digital Twin** → `/twin` — side-by-side before/after impact comparison
+9. **Click "Resolve"** → clears incident, returns to normal monitoring
 
 ## API Endpoints
 
@@ -246,16 +285,22 @@ trafficmind/
 1. **Sub-second inference** — Groq Llama 3.3 70B delivers <0.5s agent responses
 2. **250 real road segments** — Not mock data: actual Brooklyn road network via OSMnx
 3. **Format-constrained alerts** — VMS signs enforce ≤20 chars/line, tweets ≤280 chars
-4. **RAG-grounded SOPs** — 12 real standard operating procedures validate recommendations
+4. **RAG-grounded SOPs** — 12 real standard operating procedures validate recommendations + source-cited chat
 5. **Digital twin** — Before/after impact visualization with quantified time savings
 6. **Cascade risk assessment** — Supervisor checks if diversion routes are themselves at risk
 7. **Cross-agent coherence** — Supervisor detects conflicts between signal and routing recommendations
 8. **WebSocket real-time** — Live 5-second ticks with instant incident event propagation
 9. **Production architecture** — Clean separation: data layer → agent layer → presentation layer
+10. **Priority routing** — Emergency vehicles get edge-weight discounts + signal preemption lists
+11. **Weather intelligence** — Real Weather.gov conditions factor into routing penalty scores
+12. **DBSCAN hotspot prediction** — Accident cluster zones visualized as graduated risk circles
+13. **Voice-first interface** — End-to-end voice: Groq Whisper STT + Web Speech TTS
+14. **Key rotation failover** — Never go down on a rate limit: automatic Groq/Gemini key pool switching
+15. **Social media pipeline** — Live incident tweets auto-posted from within LangGraph agent step
 
 ## Team
 
-**2AM Coders** — Built in 24 hours.
+**2AM Coders**
 
 ## License
 

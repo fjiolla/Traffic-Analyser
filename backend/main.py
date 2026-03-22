@@ -10,7 +10,7 @@ import json
 from contextlib import asynccontextmanager
 from datetime import datetime
 
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
 
@@ -498,6 +498,50 @@ async def chat_history():
     """Get chat conversation history."""
     narrative = traffic_graph.get_narrative_agent()
     return {"messages": [m.model_dump() for m in narrative.get_messages()]}
+
+
+@app.post("/api/chat/voice")
+async def chat_voice(audio: UploadFile = File(...)):
+    """Voice chat: transcribe audio → narrative agent (concise) → gTTS audio."""
+    import base64
+    from io import BytesIO
+    from integrations.speech import transcribe_audio
+
+    audio_bytes = await audio.read()
+    if len(audio_bytes) == 0:
+        raise HTTPException(status_code=400, detail="Empty audio file")
+
+    stt = await transcribe_audio(audio_bytes, audio.filename or "audio.webm")
+    if stt["status"] != "ok" or not stt["text"]:
+        return {
+            "transcript": "",
+            "response": "Sorry, I couldn't understand the audio. Please try again.",
+            "thinking": "",
+            "tool_calls": [],
+            "confidence": 0.0,
+            "rag_sources": [],
+            "audio_base64": "",
+        }
+
+    transcript = stt["text"]
+    narrative = traffic_graph.get_narrative_agent()
+    response = await narrative.chat(transcript, voice=True)
+    result = response.model_dump()
+    result["transcript"] = transcript
+
+    # Generate gTTS audio from response text
+    try:
+        from gtts import gTTS
+        tts = gTTS(text=result["response"], lang="en")
+        buf = BytesIO()
+        tts.write_to_fp(buf)
+        buf.seek(0)
+        result["audio_base64"] = base64.b64encode(buf.read()).decode("ascii")
+    except Exception as e:
+        print(f"gTTS error: {e}")
+        result["audio_base64"] = ""
+
+    return result
 
 
 # ─── WebSocket ─────────────────────────────────────────────

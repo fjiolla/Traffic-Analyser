@@ -4,9 +4,10 @@
 import { useEffect, useState } from "react";
 import {
   Activity, AlertTriangle, Clock, Radio, Gauge,
-  Zap, CheckCircle, Circle, CloudRain, Cloud, Sun,
+  CheckCircle, Circle, CloudRain, Cloud, Sun,
   Snowflake, Wind, CloudFog, CloudLightning, Share2,
 } from "lucide-react";
+import Image from "next/image";
 import { useTrafficStore } from "@/lib/store";
 import { severityBg, formatHour, cn } from "@/lib/utils";
 import { api } from "@/lib/api";
@@ -67,9 +68,7 @@ export default function Sidebar() {
       {/* Logo */}
       <div className="px-4 py-5 border-b border-border">
         <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
-            <Zap className="w-4 h-4 text-white" />
-          </div>
+          <Image src="/logo.svg" alt="TrafficMind" width={32} height={32} className="rounded-lg" />
           <div>
             <h1 className="text-base font-bold text-foreground">TrafficMind</h1>
             <p className="text-[10px] text-muted">AI Co-Pilot</p>

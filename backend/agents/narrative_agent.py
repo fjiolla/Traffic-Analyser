@@ -14,6 +14,7 @@ from models.schemas import (
 )
 
 from core.key_manager import get_gemini_key
+from core.risk_scorer import compute_risk_map
 from rag.retriever import retrieve_sops
 
 try:
@@ -26,8 +27,8 @@ except ImportError:
 SYSTEM_PROMPT = """You are TrafficMind, an AI co-pilot assisting traffic control officers in Brooklyn, New York.
 You have access to real-time traffic sensor data and incident management tools.
 
-PERSONA: Professional, concise, data-driven. You are a decision-support tool, not a replacement for the officer.
-The officer stays in command — you handle the cognitive load.
+PERSONA: Friendly, professional, conversational. Speak naturally like a knowledgeable colleague — not a document reader.
+The officer stays in command — you handle the cognitive load and give them clear, actionable information.
 
 AVAILABLE TOOLS (use by including [TOOL_CALL: tool_name(args)] in your thinking):
 - get_speed(street_name) → current speed in mph and % of normal
@@ -35,28 +36,49 @@ AVAILABLE TOOLS (use by including [TOOL_CALL: tool_name(args)] in your thinking)
 - check_diversion_status() → current diversion route status and compliance
 - get_density(street_name) → vehicle density and congestion level
 
-RESPONSE FORMAT:
-1. Think through the question (brief internal reasoning)
-2. Call any tools needed
-3. Answer with sensor-backed data and confidence level
+HOW TO RESPOND:
+1. Think through the question internally
+2. Call any tools needed to get data
+3. Write a clear, natural-language answer using the data
+4. Reference specific numbers when helpful (e.g., "Flatbush is moving at 12 mph, about 40% of normal")
+5. End with confidence level: [Confidence: HIGH/MEDIUM/LOW]
 
-Always cite specific data: "Flatbush Ave is currently at 12 mph (40% of normal), risk score 0.78."
-End with confidence level: [Confidence: HIGH/MEDIUM/LOW]
+CRITICAL RULES:
+- NEVER reproduce SOP text verbatim. You have reference SOPs for background knowledge only — use them to inform your judgment, then answer in your OWN words conversationally.
+- DO NOT dump raw data tables or tool output. Synthesize information into a helpful, human-readable response.
+- If you have SOP context, weave the relevant guidance naturally into your answer (e.g., "Based on our protocols, you'd want to..." rather than copying SOP paragraphs).
+- Keep answers concise — 2-4 sentences for simple questions, more for complex safety assessments.
+- Be proactive: if data suggests something the officer should know, mention it.
 
 IMPORTANT: Maintain context across the conversation. Reference previous questions/answers when relevant.
-If the officer asks about safety (e.g., "Is it safe to open the southbound lane?"), 
+If the officer asks about safety (e.g., "Is it safe to open the southbound lane?"),
 check speed, risk, and density data before answering."""
 
 
 class NarrativeAgent:
     """Conversational agent with TAO loop and tool access."""
 
-    def __init__(self):
+    def __init__(self, feed_engine=None):
         self._messages: list[ChatMessage] = []
         self._incident: IncidentDetection | None = None
         self._agent_output: AgentOutput | None = None
         self._snapshot: list[SegmentSpeed] = []
         self._risk_map: list[RiskEntry] = []
+        self._feed_engine = feed_engine
+
+    def _get_live_snapshot(self) -> list[SegmentSpeed]:
+        """Get live data from feed engine, falling back to last incident snapshot."""
+        if self._feed_engine:
+            return self._feed_engine.get_snapshot()
+        return self._snapshot
+
+    def _get_live_risk_map(self) -> list[RiskEntry]:
+        """Compute live risk scores from current feed data."""
+        snapshot = self._get_live_snapshot()
+        if snapshot:
+            hour = self._feed_engine.get_simulated_hour() if self._feed_engine else 9.0
+            return compute_risk_map(snapshot, hour)
+        return self._risk_map
 
     def set_context(
         self,
@@ -73,8 +95,10 @@ class NarrativeAgent:
 
     def _execute_tool(self, tool_name: str, args: str) -> str:
         """Execute a TAO tool call and return observation."""
-        speed_by_name = {s.street_name.lower(): s for s in self._snapshot}
-        risk_by_name = {r.street_name.lower(): r for r in self._risk_map}
+        live_snapshot = self._get_live_snapshot()
+        live_risk = self._get_live_risk_map()
+        speed_by_name = {s.street_name.lower(): s for s in live_snapshot}
+        risk_by_name = {r.street_name.lower(): r for r in live_risk}
 
         if tool_name == "get_speed":
             street = args.strip().strip('"').strip("'").lower()
@@ -113,20 +137,20 @@ class NarrativeAgent:
             return "No active diversion route."
 
         elif tool_name == "get_density":
-            street = args.strip().strip('"').strip("'")
+            street = args.strip().strip('"').strip("'").lower()
             if self._agent_output and self._agent_output.density:
                 density = self._agent_output.density.segment_densities.get(street)
                 if density:
                     return f"{street}: density {density} veh/km, overall congestion: {self._agent_output.density.congestion_level}"
-            # Fallback to snapshot density
-            for seg in self._snapshot:
-                if street.lower() in seg.street_name.lower():
+            # Fallback to live snapshot density
+            for seg in live_snapshot:
+                if street in seg.street_name.lower() or seg.street_name.lower() in street:
                     return f"{seg.street_name}: density {seg.density} veh/km"
             return f"No density data for '{args}'"
 
         return f"Unknown tool: {tool_name}"
 
-    async def chat(self, user_message: str) -> ChatResponse:
+    async def chat(self, user_message: str, voice: bool = False) -> ChatResponse:
         """Process officer's question through TAO loop."""
         self._messages.append(ChatMessage(
             role="user",
@@ -148,7 +172,7 @@ class NarrativeAgent:
         context_parts = []
 
         if rag_docs:
-            context_parts.append("RELEVANT STANDARD OPERATING PROCEDURES:\n" + "\n---\n".join(rag_docs))
+            context_parts.append("REFERENCE KNOWLEDGE (use as background — do NOT quote verbatim):\n" + "\n---\n".join(rag_docs))
 
         if self._incident:
             context_parts.append(
@@ -157,6 +181,16 @@ class NarrativeAgent:
                 f"Duration estimate: {self._incident.duration_estimate_min} min. "
                 f"Description: {self._incident.description}"
             )
+
+        # Inject live traffic data so Gemini can answer any street question
+        live_snapshot = self._get_live_snapshot()
+        if live_snapshot:
+            # Build a compact speed table for the LLM
+            speed_lines = []
+            for seg in live_snapshot:
+                pct = round(seg.speed / seg.free_flow_speed * 100) if seg.free_flow_speed > 0 else 0
+                speed_lines.append(f"  {seg.street_name}: {seg.speed:.0f} mph ({pct}% of {seg.free_flow_speed:.0f} mph free-flow), density {seg.density:.0f} veh/km")
+            context_parts.append("LIVE SENSOR DATA (all monitored streets):\n" + "\n".join(speed_lines))
 
         if self._agent_output:
             if self._agent_output.signal_recommendations:
@@ -181,97 +215,118 @@ class NarrativeAgent:
             # Fallback: direct tool-based response
             return self._fallback_response(user_message)
 
-        try:
-            genai.configure(api_key=get_gemini_key())
-            model = genai.GenerativeModel("gemini-2.0-flash")
+        # Try up to 3 different API keys on rate-limit errors
+        last_error = None
+        for _attempt in range(3):
+            try:
+                genai.configure(api_key=get_gemini_key())
+                model = genai.GenerativeModel("gemini-2.5-flash")
 
-            prompt = f"""{SYSTEM_PROMPT}
+                voice_instruction = """
+
+⚠️ VOICE MODE — This answer will be spoken aloud via text-to-speech.
+Be EXTREMELY concise: 1-2 short sentences max. Give only the key data point or action.
+No greetings, no filler, no "Let me check" — just the essential answer.""" if voice else ""
+
+                prompt = f"""{SYSTEM_PROMPT}
 
 CURRENT SITUATION:
 {context}
 
 CONVERSATION HISTORY:
-{history_text}
+{history_text}{voice_instruction}
 
-Respond to the officer's latest question. Use tools if needed by including [TOOL: tool_name("arg")] in your thinking.
-Then provide the final answer."""
+Respond to the officer's latest question naturally and conversationally. Use tools if needed by including [TOOL: tool_name("arg")] in your thinking.
+Synthesize any reference knowledge into your own words — never copy it verbatim. Then provide the final answer."""
 
-            response = model.generate_content(
-                prompt,
-                generation_config=genai.GenerationConfig(
-                    temperature=0.4,
-                    max_output_tokens=600,
-                ),
-            )
+                response = model.generate_content(
+                    prompt,
+                    generation_config=genai.GenerationConfig(
+                        temperature=0.4,
+                        max_output_tokens=256 if voice else 1024,
+                    ),
+                )
 
-            response_text = response.text
-            thinking = ""
-            tool_calls = []
+                response_text = response.text
+                thinking = ""
+                tool_calls = []
 
-            # Check if response contains tool calls
-            if "[TOOL:" in response_text or "[TOOL_CALL:" in response_text:
-                import re
-                tool_pattern = r'\[TOOL(?:_CALL)?:\s*(\w+)\(([^)]*)\)\]'
-                matches = re.findall(tool_pattern, response_text)
+                # Check if response contains tool calls
+                if "[TOOL:" in response_text or "[TOOL_CALL:" in response_text:
+                    import re
+                    tool_pattern = r'\[TOOL(?:_CALL)?:\s*(\w+)\(([^)]*)\)\]'
+                    matches = re.findall(tool_pattern, response_text)
 
-                for tool_name, tool_args in matches:
-                    observation = self._execute_tool(tool_name, tool_args)
-                    tool_calls.append({
-                        "tool": tool_name,
-                        "args": tool_args,
-                        "result": observation,
-                    })
+                    for tool_name, tool_args in matches:
+                        # Strip keyword arg syntax like street_name='...'
+                        clean_args = re.sub(r'^\w+=', '', tool_args).strip().strip("'\"")
+                        observation = self._execute_tool(tool_name, clean_args)
+                        tool_calls.append({
+                            "tool": tool_name,
+                            "args": clean_args,
+                            "result": observation,
+                        })
 
-                # If we found tool calls, re-query with observations
-                if tool_calls:
-                    observations = "\n".join([f"[{tc['tool']}] → {tc['result']}" for tc in tool_calls])
-                    follow_up = f"""Based on these tool observations:
+                    # If we found tool calls, re-query with observations
+                    if tool_calls:
+                        observations = "\n".join([f"[{tc['tool']}] → {tc['result']}" for tc in tool_calls])
+                        follow_up = f"""Based on these tool observations:
 {observations}
 
-Provide a clear, data-backed answer to the officer. No further tool calls needed."""
+Provide a clear, data-backed answer to the officer. No further tool calls needed. Do NOT include [TOOL_CALL:...] markers in your answer."""
 
-                    response2 = model.generate_content(
-                        f"{prompt}\n\nTOOL OBSERVATIONS:\n{observations}\n\n{follow_up}",
-                        generation_config=genai.GenerationConfig(
-                            temperature=0.3,
-                            max_output_tokens=400,
-                        ),
-                    )
-                    thinking = response_text
-                    response_text = response2.text
+                        response2 = model.generate_content(
+                            f"{prompt}\n\nTOOL OBSERVATIONS:\n{observations}\n\n{follow_up}",
+                            generation_config=genai.GenerationConfig(
+                                temperature=0.3,
+                                max_output_tokens=800,
+                            ),
+                        )
+                        thinking = response_text
+                        response_text = response2.text
 
-            # Determine confidence from response
-            confidence = 0.8
-            if "[Confidence: HIGH]" in response_text or "high confidence" in response_text.lower():
-                confidence = 0.9
-            elif "[Confidence: LOW]" in response_text or "low confidence" in response_text.lower():
-                confidence = 0.5
+                # Determine confidence from response
+                confidence = 0.8
+                if "[Confidence: HIGH]" in response_text or "high confidence" in response_text.lower():
+                    confidence = 0.9
+                elif "[Confidence: LOW]" in response_text or "low confidence" in response_text.lower():
+                    confidence = 0.5
 
-            # Clean response
-            response_text = response_text.replace("[Confidence: HIGH]", "").replace("[Confidence: MEDIUM]", "").replace("[Confidence: LOW]", "").strip()
+                # Clean response
+                import re as _re
+                response_text = response_text.replace("[Confidence: HIGH]", "").replace("[Confidence: MEDIUM]", "").replace("[Confidence: LOW]", "")
+                # Strip any remaining tool call markers from final text
+                response_text = _re.sub(r'\[TOOL(?:_CALL)?:\s*\w+\([^)]*\)\]', '', response_text)
+                response_text = _re.sub(r'\[TOOL_RESPONSE:[^\]]*\]', '', response_text)
+                response_text = response_text.strip()
 
-            self._messages.append(ChatMessage(
-                role="assistant",
-                content=response_text,
-                timestamp=datetime.now().isoformat(),
-                tool_calls=tool_calls,
-                thinking=thinking,
-            ))
+                self._messages.append(ChatMessage(
+                    role="assistant",
+                    content=response_text,
+                    timestamp=datetime.now().isoformat(),
+                    tool_calls=tool_calls,
+                    thinking=thinking,
+                ))
 
-            return ChatResponse(
-                response=response_text,
-                thinking=thinking,
-                tool_calls=tool_calls,
-                confidence=confidence,
-                rag_sources=rag_sources,
-            )
+                return ChatResponse(
+                    response=response_text,
+                    thinking=thinking,
+                    tool_calls=tool_calls,
+                    confidence=confidence,
+                    rag_sources=rag_sources,
+                )
 
-        except Exception as e:
-            print(f"Narrative agent error: {e}")
-            return self._fallback_response(user_message)
+            except Exception as e:
+                last_error = e
+                print(f"Narrative agent error (attempt {_attempt+1}): {e}")
+                continue  # Try next API key
+
+        # All retries exhausted
+        print(f"All Gemini attempts failed, using fallback")
+        return self._fallback_response(user_message)
 
     def _fallback_response(self, question: str) -> ChatResponse:
-        """Generate response using available data without LLM."""
+        """Generate response using available data, with LLM layer if possible."""
         q = question.lower()
         tool_calls = []
 
@@ -283,44 +338,82 @@ Provide a clear, data-backed answer to the officer. No further tool calls needed
                 if doc.startswith("[") and "]" in doc:
                     rag_sources.append(doc[1:doc.index("]")])
 
+        # Gather relevant data via tools (uses live data now)
+        live_snapshot = self._get_live_snapshot()
         if "safe" in q or "open" in q or "lane" in q:
             if self._incident:
-                seg = next((s for s in self._snapshot if s.street_name == self._incident.street_name), None)
-                if seg:
-                    obs = self._execute_tool("get_speed", self._incident.street_name)
-                    tool_calls.append({"tool": "get_speed", "args": self._incident.street_name, "result": obs})
-
-                    risk_obs = self._execute_tool("get_risk_score", self._incident.street_name)
-                    tool_calls.append({"tool": "get_risk_score", "args": self._incident.street_name, "result": risk_obs})
-
-                    pct = seg.speed / seg.free_flow_speed * 100 if seg.free_flow_speed > 0 else 0
-                    safe = pct > 60
-                    response = (
-                        f"Based on current sensor data: {obs}. {risk_obs}. "
-                        f"{'Conditions appear safe for reopening.' if safe else 'Not recommended yet — speed still well below baseline.'} "
-                        f"[Confidence: {'HIGH' if safe and pct > 80 else 'MEDIUM'}]"
-                    )
-                    confidence = 0.85 if safe else 0.7
-                else:
-                    response = "Unable to assess — no sensor data available for the incident location."
-                    confidence = 0.3
-            else:
-                response = "No active incident to assess."
-                confidence = 0.5
+                obs = self._execute_tool("get_speed", self._incident.street_name)
+                tool_calls.append({"tool": "get_speed", "args": self._incident.street_name, "result": obs})
+                risk_obs = self._execute_tool("get_risk_score", self._incident.street_name)
+                tool_calls.append({"tool": "get_risk_score", "args": self._incident.street_name, "result": risk_obs})
         elif "speed" in q:
-            # Extract street name and return speed
-            for seg in self._snapshot[:5]:
+            for seg in live_snapshot[:5]:
                 obs = self._execute_tool("get_speed", seg.street_name)
                 tool_calls.append({"tool": "get_speed", "args": seg.street_name, "result": obs})
-            response = "Current speeds:\n" + "\n".join(tc["result"] for tc in tool_calls)
-            confidence = 0.9
         elif "diversion" in q or "route" in q:
             obs = self._execute_tool("check_diversion_status", "")
             tool_calls.append({"tool": "check_diversion_status", "args": "", "result": obs})
-            response = obs
-            confidence = 0.85
+        elif "risk" in q or "danger" in q:
+            for r in self._risk_map[:5]:
+                obs = self._execute_tool("get_risk_score", r.street_name)
+                tool_calls.append({"tool": "get_risk_score", "args": r.street_name, "result": obs})
+
+        # Build a mini-prompt with all gathered data and try Gemini
+        data_text = "\n".join(f"- {tc['result']}" for tc in tool_calls) if tool_calls else "No specific tool data gathered."
+        rag_text = "\n---\n".join(rag_docs) if rag_docs else "No reference documents available."
+
+        context_parts = []
+        if self._incident:
+            context_parts.append(
+                f"Active incident: {self._incident.severity.value} on {self._incident.street_name} — {self._incident.description}"
+            )
+        if self._agent_output and self._agent_output.final_summary:
+            context_parts.append(f"Situation summary: {self._agent_output.final_summary}")
+
+        fallback_prompt = f"""You are TrafficMind, a friendly and knowledgeable AI traffic co-pilot for Brooklyn officers.
+Answer the officer's question naturally and conversationally. Use the data and reference knowledge below to inform your answer, but write in your OWN words — never copy reference text verbatim.
+
+OFFICER'S QUESTION: {question}
+
+SENSOR DATA:
+{data_text}
+
+SITUATION CONTEXT:
+{chr(10).join(context_parts) if context_parts else "No active incident."}
+
+REFERENCE KNOWLEDGE (paraphrase, do not quote):
+{rag_text}
+
+Write a helpful, concise, conversational response. 2-4 sentences."""
+
+        # Try Gemini for natural language generation (retry with different keys)
+        if GEMINI_AVAILABLE:
+            for _fb_attempt in range(3):
+                try:
+                    genai.configure(api_key=get_gemini_key())
+                    model = genai.GenerativeModel("gemini-2.5-flash")
+                    resp = model.generate_content(
+                        fallback_prompt,
+                        generation_config=genai.GenerationConfig(temperature=0.5, max_output_tokens=800),
+                    )
+                    response = resp.text.replace("[Confidence: HIGH]", "").replace("[Confidence: MEDIUM]", "").replace("[Confidence: LOW]", "").strip()
+                    confidence = 0.75
+                    break
+                except Exception as fb_err:
+                    print(f"Fallback Gemini attempt {_fb_attempt+1}: {fb_err}")
+                    continue
+            else:
+                # All retries failed — true fallback
+                if tool_calls:
+                    response = "Here's what I found: " + "; ".join(tc["result"] for tc in tool_calls)
+                else:
+                    response = "I can help with speed data, risk scores, diversion status, and safety assessments. What would you like to know?"
+                confidence = 0.5
         else:
-            response = "I can help with speed data, risk scores, diversion status, and safety assessments. What would you like to know?"
+            if tool_calls:
+                response = "Here's what I found: " + "; ".join(tc["result"] for tc in tool_calls)
+            else:
+                response = "I can help with speed data, risk scores, diversion status, and safety assessments. What would you like to know?"
             confidence = 0.5
 
         self._messages.append(ChatMessage(

@@ -11,8 +11,11 @@ import random
 import threading
 import numpy as np
 import pandas as pd
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Callable
+from zoneinfo import ZoneInfo
+
+NYC_TZ = ZoneInfo("America/New_York")
 
 try:
     import osmnx as ox
@@ -195,7 +198,11 @@ class FeedEngine:
         self._listeners: list[Callable] = []
         self._incident_segment: str | None = None
         self._incident_speed_factor: float = 0.0
-        now = datetime.now()
+        # Congestion decay after incident clears (15-min window)
+        self._decay_segment: str | None = None
+        self._decay_start: float | None = None  # time.time() when decay started
+        self._decay_duration: float = 900.0  # 15 minutes in seconds
+        now = datetime.now(NYC_TZ)
         self._simulated_hour: float = now.hour + now.minute / 60.0
 
     def initialize(self):
@@ -237,6 +244,10 @@ class FeedEngine:
         self._incident_speed_factor = speed_factor
 
     def clear_incident(self):
+        # Start congestion decay window instead of instant clear
+        if self._incident_segment:
+            self._decay_segment = self._incident_segment
+            self._decay_start = time.time()
         self._incident_segment = None
         self._incident_speed_factor = 0.0
 
@@ -246,8 +257,8 @@ class FeedEngine:
     def _generate_tick(self) -> FeedTick:
         """Generate one tick of speed data."""
         self._tick += 1
-        # Use real wall-clock time
-        now = datetime.now()
+        # Use NYC wall-clock time
+        now = datetime.now(NYC_TZ)
         self._simulated_hour = now.hour + now.minute / 60.0
 
         tod_factor = _time_of_day_factor(self._simulated_hour)
@@ -276,6 +287,26 @@ class FeedEngine:
                             decay = max(0.3, dist / 0.8)
                             speed *= decay
 
+            # Post-incident congestion decay (gradual recovery over 15 min)
+            elif self._decay_segment and self._decay_start:
+                elapsed_s = time.time() - self._decay_start
+                if elapsed_s < self._decay_duration:
+                    recovery = elapsed_s / self._decay_duration  # 0→1 over 15 min
+                    decay_seg = next((s for s in self._segments if s["segment_id"] == self._decay_segment), None)
+                    if decay_seg:
+                        if seg["segment_id"] == self._decay_segment:
+                            # Incident segment: recover from 5% → normal
+                            speed = speed * (0.3 + 0.7 * recovery)
+                        else:
+                            dist = _haversine(seg["lat"], seg["lon"], decay_seg["lat"], decay_seg["lon"])
+                            if dist < 0.8:
+                                residual = max(0.0, 1.0 - recovery) * max(0.0, 1.0 - dist / 0.8) * 0.5
+                                speed *= (1.0 - residual)
+                else:
+                    # Decay window expired
+                    self._decay_segment = None
+                    self._decay_start = None
+
             # Density from fundamental flow equation: density = flow / speed
             # flow ≈ proportional to time-of-day
             flow_factor = 1.0 - (tod_factor - 0.35) / 0.65
@@ -295,7 +326,7 @@ class FeedEngine:
         with self._lock:
             self._snapshot = speeds
 
-        now = datetime.now()
+        now = datetime.now(NYC_TZ)
         sim_time = now.replace(
             hour=int(self._simulated_hour),
             minute=int((self._simulated_hour % 1) * 60),

@@ -16,6 +16,9 @@ export const metadata: Metadata = {
   title: "TrafficMind — AI Co-Pilot for Traffic Incident Command",
   description:
     "Real-time, LLM-powered multi-agent system for traffic incident management. Signal re-timing, dynamic routing, public alerts, and conversational AI — all in one platform.",
+  icons: {
+    icon: "/icon.svg",
+  },
 };
 
 export default function RootLayout({
