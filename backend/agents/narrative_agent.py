@@ -14,6 +14,7 @@ from models.schemas import (
 )
 
 from core.key_manager import get_gemini_key
+from rag.retriever import retrieve_sops
 
 try:
     import google.generativeai as genai
@@ -133,8 +134,22 @@ class NarrativeAgent:
             timestamp=datetime.now().isoformat(),
         ))
 
+        # RAG: retrieve relevant SOP documents
+        rag_docs = retrieve_sops(user_message, top_k=2)
+        rag_sources: list[str] = []
+        if rag_docs:
+            for doc in rag_docs:
+                # Extract doc name from "[Doc Name]\ncontent" format
+                if doc.startswith("[") and "]" in doc:
+                    name = doc[1:doc.index("]")]
+                    rag_sources.append(name)
+
         # Build context
         context_parts = []
+
+        if rag_docs:
+            context_parts.append("RELEVANT STANDARD OPERATING PROCEDURES:\n" + "\n---\n".join(rag_docs))
+
         if self._incident:
             context_parts.append(
                 f"ACTIVE INCIDENT: {self._incident.severity.value} on {self._incident.street_name} "
@@ -248,6 +263,7 @@ Provide a clear, data-backed answer to the officer. No further tool calls needed
                 thinking=thinking,
                 tool_calls=tool_calls,
                 confidence=confidence,
+                rag_sources=rag_sources,
             )
 
         except Exception as e:
@@ -258,6 +274,14 @@ Provide a clear, data-backed answer to the officer. No further tool calls needed
         """Generate response using available data without LLM."""
         q = question.lower()
         tool_calls = []
+
+        # RAG: retrieve relevant SOP documents for fallback too
+        rag_docs = retrieve_sops(question, top_k=2)
+        rag_sources: list[str] = []
+        if rag_docs:
+            for doc in rag_docs:
+                if doc.startswith("[") and "]" in doc:
+                    rag_sources.append(doc[1:doc.index("]")])
 
         if "safe" in q or "open" in q or "lane" in q:
             if self._incident:
@@ -310,6 +334,7 @@ Provide a clear, data-backed answer to the officer. No further tool calls needed
             response=response,
             tool_calls=tool_calls,
             confidence=confidence,
+            rag_sources=rag_sources,
         )
 
     def get_messages(self) -> list[ChatMessage]:

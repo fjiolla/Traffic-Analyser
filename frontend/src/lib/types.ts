@@ -98,6 +98,7 @@ export interface ChatMessage {
   timestamp: string;
   tool_calls: Array<{ tool: string; args: string; result: string }>;
   thinking: string;
+  rag_sources?: string[];
 }
 
 export interface ChatResponse {
@@ -105,6 +106,7 @@ export interface ChatResponse {
   thinking: string;
   tool_calls: Array<{ tool: string; args: string; result: string }>;
   confidence: number;
+  rag_sources: string[];
 }
 
 export interface TwinData {

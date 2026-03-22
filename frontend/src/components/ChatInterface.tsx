@@ -2,11 +2,40 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { MessageSquare, Send, Bot, User, Wrench, Loader2 } from "lucide-react";
+import { MessageSquare, Send, Bot, User, Wrench, Loader2, FileText, ChevronDown, ChevronRight } from "lucide-react";
 import { useTrafficStore } from "@/lib/store";
 import { api } from "@/lib/api";
 import { cn, formatTime } from "@/lib/utils";
 import type { ChatMessage } from "@/lib/types";
+
+function RagSourceBadges({ sources }: { sources: string[] }) {
+  const [expanded, setExpanded] = useState(false);
+  return (
+    <div className="mt-2">
+      <button
+        onClick={() => setExpanded(!expanded)}
+        className="flex items-center gap-1 text-[10px] text-primary hover:underline"
+      >
+        <FileText className="w-3 h-3" />
+        <span>{sources.length} SOP Source{sources.length > 1 ? "s" : ""}</span>
+        {expanded ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
+      </button>
+      {expanded && (
+        <div className="mt-1 flex flex-wrap gap-1">
+          {sources.map((src, i) => (
+            <span
+              key={i}
+              className="inline-flex items-center gap-1 text-[10px] bg-primary/10 text-primary rounded-full px-2 py-0.5"
+            >
+              <FileText className="w-2.5 h-2.5" />
+              {src}
+            </span>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function ChatInterface() {
   const messages = useTrafficStore((s) => s.messages);
@@ -45,6 +74,7 @@ export default function ChatInterface() {
         timestamp: new Date().toISOString(),
         tool_calls: res.tool_calls || [],
         thinking: res.thinking || "",
+        rag_sources: res.rag_sources || [],
       };
       addMessage(botMsg);
     } catch {
@@ -139,6 +169,11 @@ export default function ChatInterface() {
                     </div>
                   ))}
                 </div>
+              )}
+
+              {/* RAG Source badges */}
+              {msg.role === "assistant" && msg.rag_sources && msg.rag_sources.length > 0 && (
+                <RagSourceBadges sources={msg.rag_sources} />
               )}
 
               <p className="text-[9px] mt-1 opacity-60">

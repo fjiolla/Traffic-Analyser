@@ -127,6 +127,7 @@ class ChatResponse(BaseModel):
     thinking: str = ""
     tool_calls: list[dict] = Field(default_factory=list)
     confidence: float = 0.0
+    rag_sources: list[str] = Field(default_factory=list)
 
 
 class WeatherConditionSchema(BaseModel):
