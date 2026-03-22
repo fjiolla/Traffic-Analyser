@@ -468,6 +468,23 @@ async def resolve_incident():
     return {"status": "resolved"}
 
 
+@app.get("/api/settings")
+async def get_settings():
+    """Get current settings."""
+    return {
+        "auto_post": traffic_graph.get_auto_post() if traffic_graph else False,
+    }
+
+
+@app.post("/api/settings/auto-post")
+async def set_auto_post(body: dict):
+    """Toggle auto-post to Twitter/X."""
+    enabled = bool(body.get("enabled", False))
+    if traffic_graph:
+        traffic_graph.set_auto_post(enabled)
+    return {"auto_post": enabled}
+
+
 @app.post("/api/chat")
 async def chat(request: ChatRequest):
     """Send a message to the narrative agent."""

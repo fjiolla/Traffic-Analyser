@@ -75,6 +75,10 @@ interface TrafficStore {
   setActivePanel: (p: string) => void;
   incidentStartTime: number | null;
   setIncidentStartTime: (t: number | null) => void;
+
+  // Settings
+  autoPost: boolean;
+  setAutoPost: (v: boolean) => void;
 }
 
 export const useTrafficStore = create<TrafficStore>((set) => ({
@@ -140,4 +144,7 @@ export const useTrafficStore = create<TrafficStore>((set) => ({
   setActivePanel: (activePanel) => set({ activePanel }),
   incidentStartTime: null,
   setIncidentStartTime: (incidentStartTime) => set({ incidentStartTime }),
+
+  autoPost: false,
+  setAutoPost: (autoPost) => set({ autoPost }),
 }));

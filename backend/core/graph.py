@@ -25,6 +25,7 @@ from agents.density_agent import run_density_agent
 from agents.supervisor import run_supervisor
 from agents.narrative_agent import NarrativeAgent
 from rag.retriever import retrieve_sops
+from integrations.twitter_poster import post_tweet
 
 
 class TrafficState(TypedDict):
@@ -77,12 +78,19 @@ class TrafficGraph:
             "last_update": "",
         }
         self._incident_active = False
+        self._auto_post = False
 
     def get_state(self) -> TrafficState:
         return self._state
 
     def get_narrative_agent(self) -> NarrativeAgent:
         return self.narrative
+
+    def set_auto_post(self, enabled: bool):
+        self._auto_post = enabled
+
+    def get_auto_post(self) -> bool:
+        return self._auto_post
 
     async def _emit(self, data: dict):
         """Emit a WebSocket event if callback is registered."""
@@ -198,6 +206,24 @@ class TrafficGraph:
 
             # Update narrative agent context
             self.narrative.set_context(incident, agent_output, snapshot, risk_map)
+
+            # Auto-post tweet if enabled
+            if self._auto_post and alerts and alerts.tweet:
+                tweet_result = post_tweet(alerts.tweet)
+                tweet_status = tweet_result.get("status", "unknown")
+                if tweet_status == "posted":
+                    self._state["timeline"].append(TimelineEntry(
+                        timestamp=datetime.now().isoformat(),
+                        event=f"📱 Tweet posted: {tweet_result.get('url', '')}",
+                        category="social",
+                    ))
+                else:
+                    reason = tweet_result.get("reason", "unknown")
+                    self._state["timeline"].append(TimelineEntry(
+                        timestamp=datetime.now().isoformat(),
+                        event=f"📱 Tweet {tweet_status}: {reason}",
+                        category="social",
+                    ))
 
             elapsed = round(time.time() - start, 2)
             self._state["timeline"].append(TimelineEntry(

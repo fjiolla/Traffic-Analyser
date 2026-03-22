@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import {
   Activity, AlertTriangle, Clock, Radio, Gauge,
   Zap, CheckCircle, Circle, CloudRain, Cloud, Sun,
-  Snowflake, Wind, CloudFog, CloudLightning,
+  Snowflake, Wind, CloudFog, CloudLightning, Share2,
 } from "lucide-react";
 import { useTrafficStore } from "@/lib/store";
 import { severityBg, formatHour, cn } from "@/lib/utils";
@@ -22,8 +22,15 @@ export default function Sidebar() {
   const density = useTrafficStore((s) => s.density);
   const weather = useTrafficStore((s) => s.weather);
   const setWeather = useTrafficStore((s) => s.setWeather);
+  const autoPost = useTrafficStore((s) => s.autoPost);
+  const setAutoPost = useTrafficStore((s) => s.setAutoPost);
 
   const [elapsed, setElapsed] = useState("00:00");
+
+  // Fetch initial auto-post setting
+  useEffect(() => {
+    api.getSettings().then((s: { auto_post: boolean }) => setAutoPost(s.auto_post)).catch(() => {});
+  }, [setAutoPost]);
 
   // Poll weather every 5 minutes
   useEffect(() => {
@@ -269,6 +276,37 @@ export default function Sidebar() {
           </div>
         </div>
       )}
+
+      {/* Auto-Post Tweets */}
+      <div className="px-4 py-3 border-t border-slate-200">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2 text-xs text-muted">
+            <Share2 className="w-3.5 h-3.5" />
+            <span>Auto-Post Tweets</span>
+          </div>
+          <button
+            onClick={() => {
+              const next = !autoPost;
+              setAutoPost(next);
+              api.setAutoPost(next).catch(() => setAutoPost(!next));
+            }}
+            className={cn(
+              "relative w-8 h-[18px] rounded-full transition-colors duration-200",
+              autoPost ? "bg-blue-500" : "bg-slate-300"
+            )}
+          >
+            <span
+              className={cn(
+                "absolute top-0.5 left-0.5 w-3.5 h-3.5 rounded-full bg-white transition-transform duration-200",
+                autoPost && "translate-x-3.5"
+              )}
+            />
+          </button>
+        </div>
+        <p className="text-[10px] text-muted mt-1 pl-5.5">
+          {autoPost ? "Tweets post when incidents detected" : "Tweet auto-posting disabled"}
+        </p>
+      </div>
     </div>
   );
 }

@@ -61,6 +61,14 @@ export const api = {
       method: "POST",
       body: JSON.stringify({ message }),
     }),
+
+  getSettings: () => fetchAPI<any>("/api/settings"),
+
+  setAutoPost: (enabled: boolean) =>
+    fetchAPI<any>("/api/settings/auto-post", {
+      method: "POST",
+      body: JSON.stringify({ enabled }),
+    }),
 };
 
 export { API_URL };
